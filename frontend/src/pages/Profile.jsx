@@ -6,10 +6,42 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProductCard from '../components/ProductCard';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { toast } from 'react-toastify';
 import { getProducts } from '../api/products';
 
-const Profile = () => {
+const containerVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      staggerChildren: 0.1
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: -20,
+    transition: {
+      duration: 0.3
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 100
+    }
+  }
+};
+
+const ProfileComponent = () => {
   const { user, updateUser } = useAuth();
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(false);
@@ -69,28 +101,6 @@ const Profile = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile');
       setLoading(false);
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100
-      }
     }
   };
 
@@ -190,7 +200,12 @@ const Profile = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              exit="hidden"
+              exit="exit"
+              className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2"
+              style={{
+                backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
+                borderColor: darkMode ? '#A47148' : '#BC8A5F'
+              }}
             >
               {/* Profile Section */}
               <motion.div
@@ -732,5 +747,11 @@ const Profile = () => {
     </div>
   );
 };
+
+const Profile = () => (
+  <ErrorBoundary>
+    <ProfileComponent />
+  </ErrorBoundary>
+);
 
 export default Profile;

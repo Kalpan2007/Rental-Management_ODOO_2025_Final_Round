@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const AdminRoute = () => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
@@ -13,7 +14,13 @@ const AdminRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  return isAdmin ? <Outlet /> : <Navigate to="/unauthorized" replace />;
+  return isAdmin ? (
+    <ErrorBoundary>
+      <Outlet />
+    </ErrorBoundary>
+  ) : (
+    <Navigate to="/unauthorized" replace />
+  );
 };
 
 export default AdminRoute;
