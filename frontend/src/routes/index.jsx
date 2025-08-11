@@ -35,6 +35,7 @@ const AppRoutes = () => {
       <Route path="/products/:id" element={<ProductDetail />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/register" element={<Signup />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       
       {/* Protected Routes */}
