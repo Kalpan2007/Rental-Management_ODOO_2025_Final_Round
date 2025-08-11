@@ -18,7 +18,16 @@ const Home = () => {
       try {
         setLoading(true);
         const response = await getProducts({ featured: true, limit: 6 });
-        setFeaturedProducts(response.data);
+        setFeaturedProducts(response.data || []);
+        {
+          featuredProducts?.length > 0 ? (
+            featuredProducts.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))
+          ) : (
+          <p className="col-span-full text-center py-10">No featured products available at the moment.</p>
+        )
+        }
         setLoading(false);
       } catch (err) {
         setError('Failed to load featured products');
@@ -32,9 +41,9 @@ const Home = () => {
 
   const heroVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
-      transition: { 
+      transition: {
         duration: 0.8,
         when: "beforeChildren",
         staggerChildren: 0.2
@@ -50,7 +59,7 @@ const Home = () => {
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Hero Section */}
-      <motion.section 
+      <motion.section
         className="relative py-20 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center"
         initial="hidden"
         animate="visible"
@@ -58,13 +67,13 @@ const Home = () => {
       >
         <div className="absolute inset-0 bg-gradient-to-b from-primary-500/30 to-transparent z-0"></div>
         <div className="relative z-10 max-w-5xl mx-auto">
-          <motion.h1 
+          <motion.h1
             className="text-4xl md:text-6xl font-bold mb-6"
             variants={itemVariants}
           >
             Rent Premium Equipment for Your Next Adventure
           </motion.h1>
-          <motion.p 
+          <motion.p
             className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto"
             variants={itemVariants}
           >
@@ -73,7 +82,7 @@ const Home = () => {
           <motion.div variants={itemVariants}>
             <SearchBar />
           </motion.div>
-          <motion.div 
+          <motion.div
             className="mt-10 flex flex-wrap gap-4 justify-center"
             variants={itemVariants}
           >
@@ -96,7 +105,7 @@ const Home = () => {
               View All →
             </Link>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center py-20">
               <LoadingSpinner size="large" />
@@ -104,8 +113,8 @@ const Home = () => {
           ) : error ? (
             <div className="text-center py-10">
               <p className="text-red-500">{error}</p>
-              <button 
-                onClick={() => window.location.reload()} 
+              <button
+                onClick={() => window.location.reload()}
                 className="mt-4 btn-secondary"
               >
                 Try Again
@@ -147,7 +156,7 @@ const Home = () => {
                 icon: "🔄"
               }
             ].map((step, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 className={`card p-8 text-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
                 initial={{ opacity: 0, y: 20 }}
@@ -191,7 +200,7 @@ const Home = () => {
                 rating: 4
               }
             ].map((testimonial, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 className={`card p-6 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}
                 initial={{ opacity: 0, scale: 0.9 }}
