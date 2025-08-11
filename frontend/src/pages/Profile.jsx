@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProductCard from '../components/ProductCard';
 import { toast } from 'react-toastify';
+import { getProducts } from '../api/products';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -12,6 +15,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     defaultValues: {
@@ -33,6 +38,26 @@ const Profile = () => {
       });
     }
   }, [user, reset]);
+
+  // Fetch user's products
+  useEffect(() => {
+    if (activeTab === 'products' && user) {
+      const fetchProducts = async () => {
+        try {
+          setProductsLoading(true);
+          const response = await getProducts({ owner: user._id });
+          setProducts(response.data);
+        } catch (err) {
+          toast.error('Failed to load your products');
+          console.error('Error fetching products:', err);
+        } finally {
+          setProductsLoading(false);
+        }
+      };
+
+      fetchProducts();
+    }
+  }, [activeTab, user]);
 
   const onSubmit = async (data) => {
     try {
@@ -134,6 +159,7 @@ const Profile = () => {
           >
             {[
               { id: 'profile', label: 'Profile', icon: '👤' },
+              { id: 'products', label: 'My Products', icon: '📦' },
               { id: 'security', label: 'Security', icon: '🔒' }
             ].map((tab) => (
               <button
@@ -441,6 +467,76 @@ const Profile = () => {
                   </AnimatePresence>
                 </div>
               </motion.div>
+            </motion.div>
+          )}
+
+          {activeTab === 'products' && (
+            <motion.div
+              key="products"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2 p-8"
+              style={{
+                backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
+                borderColor: darkMode ? '#A47148' : '#BC8A5F'
+              }}
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 
+                  className="text-3xl font-bold flex items-center"
+                  style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
+                >
+                  <span className="mr-4 text-2xl">📦</span>
+                  My Products
+                </h2>
+                <Link
+                  to="/products/new"
+                  className="px-8 py-3 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105 flex items-center"
+                  style={{
+                    backgroundColor: darkMode ? '#A47148' : '#8B5E34',
+                    color: '#FFEDD8',
+                    borderColor: darkMode ? '#BC8A5F' : '#6F4518'
+                  }}
+                >
+                  <span className="mr-2">➕</span>
+                  Add New Product
+                </Link>
+              </div>
+
+              {productsLoading ? (
+                <div className="flex justify-center items-center py-20">
+                  <LoadingSpinner size="large" />
+                </div>
+              ) : products.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <p 
+                    className="text-xl mb-6"
+                    style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
+                  >
+                    You haven't listed any products yet.
+                  </p>
+                  <Link
+                    to="/products/new"
+                    className="inline-flex items-center px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
+                    style={{
+                      backgroundColor: darkMode ? '#A47148' : '#8B5E34',
+                      color: '#FFEDD8',
+                      borderColor: darkMode ? '#BC8A5F' : '#6F4518'
+                    }}
+                  >
+                    <span className="mr-2">➕</span>
+                    List Your First Product
+                  </Link>
+                </div>
+              )}
             </motion.div>
           )}
 

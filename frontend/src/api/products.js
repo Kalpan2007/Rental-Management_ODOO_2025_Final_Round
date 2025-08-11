@@ -43,3 +43,8 @@ export const deleteProduct = async (id) => {
   const response = await api.delete(`/products/${id}`);
   return response.data;
 };
+
+export const moderateProduct = async (id, { status, reason }) => {
+  const response = await api.post(`/products/${id}/moderate`, { status, reason });
+  return response.data;
+};
