@@ -1,0 +1,88 @@
+# Rental Service Robots.txt
+
+# Allow all robots complete access
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://rentalservice.com/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /internal/
+
+# Disallow user-specific pages
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /account/
+Disallow: /orders/
+
+# Disallow development and test pages
+Disallow: /dev/
+Disallow: /test/
+Disallow: /staging/
+
+# Disallow temporary and utility pages
+Disallow: /temp/
+Disallow: /maintenance/
+Disallow: /beta/
+
+# Disallow search results and filters
+Disallow: /search/
+Disallow: /*?q=
+Disallow: /*?filter=
+Disallow: /*?sort=
+
+# Disallow shopping cart and checkout
+Disallow: /cart/
+Disallow: /checkout/
+
+# Crawl-delay directive for rate limiting
+Crawl-delay: 10
+
+# Additional rules for specific bots
+
+# Googlebot specific rules
+User-agent: Googlebot
+Allow: /products/
+Allow: /categories/
+Allow: /blog/
+Disallow: /products/*/reviews
+
+# Bingbot specific rules
+User-agent: Bingbot
+Allow: /products/
+Allow: /categories/
+Allow: /blog/
+Disallow: /products/*/reviews
+
+# Rules for social media bots
+User-agent: Twitterbot
+Allow: /blog/
+Allow: /news/
+Allow: /products/
+
+# Block archive bots
+User-agent: ia_archiver
+Disallow: /
+
+# Block specific bad bots
+User-agent: BadBot
+Disallow: /
+
+User-agent: Scrapy
+Disallow: /
+
+# Allow product images for Google Images
+User-agent: Googlebot-Image
+Allow: /images/products/
+Disallow: /images/private/
+
+# Additional SEO recommendations
+# - Keep sitemap.xml up to date
+# - Monitor crawl errors in Search Console
+# - Regularly review and update robots.txt
+# - Use rel="nofollow" for untrusted links
+# - Implement proper meta robots tags
