@@ -17,16 +17,18 @@ const Home = () => {
     const fetchFeaturedProducts = async () => {
       try {
         setLoading(true);
-        const response = await getProducts({ featured: true, limit: 6 });
-        setFeaturedProducts(response.data || []);
-        {
-          featuredProducts?.length > 0 ? (
-            featuredProducts.map((product) => (
-              <ProductCard key={product._id} product={product} />
-            ))
-          ) : (
-          <p className="col-span-full text-center py-10">No featured products available at the moment.</p>
-        )
+        // Since there's no featured field, get the most recent approved products
+        const response = await getProducts({ 
+          limit: 6,
+          status: 'approved',
+          sort: 'createdAt',
+          order: 'desc'
+        });
+        
+        if (response.success) {
+          setFeaturedProducts(response.data || []);
+        } else {
+          setError(response.error || 'Failed to load featured products');
         }
         setLoading(false);
       } catch (err) {
@@ -122,7 +124,7 @@ const Home = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.length > 0 ? (
+              {featuredProducts && featuredProducts.length > 0 ? (
                 featuredProducts.map((product) => (
                   <ProductCard key={product._id} product={product} />
                 ))

@@ -67,9 +67,16 @@ const listProducts = async (req, res) => {
       }
     }
 
+    // Handle sorting
+    const sort = req.query.sort || 'createdAt';
+    const order = req.query.order === 'asc' ? 1 : -1;
+    const sortOptions = {};
+    sortOptions[sort] = order;
+    
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
       .populate('owner', 'name email phone') // Include owner details
+      .sort(sortOptions)
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .lean();

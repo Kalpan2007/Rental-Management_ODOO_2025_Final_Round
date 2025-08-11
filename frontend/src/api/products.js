@@ -1,18 +1,55 @@
 import api from './axios';
 
 export const getProducts = async (params) => {
-  const response = await api.get('/products', { params });
-  return response.data;
+  try {
+    const response = await api.get('/products', { params });
+    // Ensure we always return a consistent structure
+    return {
+      data: response.data?.products || response.data || [],
+      success: true
+    };
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return {
+      data: [],
+      success: false,
+      error: error.message || 'Failed to fetch products'
+    };
+  }
 };
 
 export const getProductById = async (id) => {
-  const response = await api.get(`/products/${id}`);
-  return response.data;
+  try {
+    const response = await api.get(`/products/${id}`);
+    return {
+      data: response.data?.product || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error fetching product details:', error);
+    return {
+      data: {},
+      success: false,
+      error: error.message || 'Failed to fetch product details'
+    };
+  }
 };
 
 export const getProduct = async (id) => {
-  const response = await api.get(`/products/${id}`);
-  return response.data;
+  try {
+    const response = await api.get(`/products/${id}`);
+    return {
+      data: response.data?.product || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return {
+      data: {},
+      success: false,
+      error: error.message || 'Failed to fetch product'
+    };
+  }
 };
 
 export const getProductAvailability = async (id, startDate, endDate) => {
@@ -23,10 +60,22 @@ export const getProductAvailability = async (id, startDate, endDate) => {
 };
 
 export const checkProductAvailability = async (id, dates) => {
-  const response = await api.get(`/products/availability/${id}`, {
-    params: dates,
-  });
-  return response.data;
+  try {
+    const response = await api.get(`/products/availability/${id}`, {
+      params: dates,
+    });
+    return {
+      data: response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('Error checking product availability:', error);
+    return {
+      data: {},
+      success: false,
+      error: error.message || 'Failed to check product availability'
+    };
+  }
 };
 
 export const createProduct = async (productData) => {

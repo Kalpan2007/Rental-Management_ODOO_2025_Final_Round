@@ -31,7 +31,12 @@ const ProductDetail = () => {
       try {
         setLoading(true);
         const response = await getProductById(id);
-        setProduct(response.data);
+        
+        if (response.success) {
+          setProduct(response.data);
+        } else {
+          setError(response.error || 'Failed to load product details');
+        }
         setLoading(false);
       } catch (err) {
         setError('Failed to load product details');
@@ -69,14 +74,21 @@ const ProductDetail = () => {
         startDate,
         endDate
       });
-      setIsAvailable(response.data.available);
-      setCheckingAvailability(false);
       
-      if (response.data.available) {
-        toast.success('Product is available for selected dates!');
+      if (response.success) {
+        setIsAvailable(response.data?.available || false);
+        
+        if (response.data?.available) {
+          toast.success('Product is available for selected dates!');
+        } else {
+          toast.error('Product is not available for selected dates');
+        }
       } else {
-        toast.error('Product is not available for selected dates');
+        toast.error(response.error || 'Failed to check availability');
+        setIsAvailable(false);
       }
+      
+      setCheckingAvailability(false);
     } catch (err) {
       setCheckingAvailability(false);
       toast.error('Failed to check availability');
@@ -105,8 +117,13 @@ const ProductDetail = () => {
       };
 
       const response = await createBooking(bookingData);
-      toast.success('Booking created successfully!');
-      navigate(`/bookings/${response.data._id}`);
+      
+      if (response.success) {
+        toast.success('Booking created successfully!');
+        navigate(`/bookings/${response.data._id}`);
+      } else {
+        toast.error(response.error || 'Failed to create booking');
+      }
     } catch (err) {
       toast.error('Failed to create booking');
       console.error('Error creating booking:', err);

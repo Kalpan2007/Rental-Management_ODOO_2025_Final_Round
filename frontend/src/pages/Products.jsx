@@ -36,7 +36,12 @@ const Products = () => {
         }, {});
         
         const response = await getProducts(queryParams);
-        setProducts(response.data);
+        
+        if (response.success) {
+          setProducts(response.data || []);
+        } else {
+          setError(response.error || 'Failed to load products');
+        }
         setLoading(false);
       } catch (err) {
         setError('Failed to load products');
@@ -55,9 +60,15 @@ const Products = () => {
         // This would typically be a separate API call to get all categories
         // For now, we'll extract unique categories from products
         const response = await getProducts();
-        const allProducts = response.data;
-        const uniqueCategories = [...new Set(allProducts.map(product => product.category))];
-        setCategories(uniqueCategories);
+        
+        if (response.success) {
+          const allProducts = response.data || [];
+          // Only proceed with map if allProducts is an array
+          const uniqueCategories = Array.isArray(allProducts) 
+            ? [...new Set(allProducts.map(product => product.category).filter(Boolean))]
+            : [];
+          setCategories(uniqueCategories);
+        }
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
@@ -218,8 +229,8 @@ const Products = () => {
           </div>
         ) : (
           <>
-            <p className="mb-4">{products.length} products found</p>
-            {products.length > 0 ? (
+            <p className="mb-4">{products?.length || 0} products found</p>
+            {products?.length > 0 ? (
               <motion.div 
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 initial={{ opacity: 0 }}

@@ -4,6 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 const ProductCard = ({ product }) => {
   const { user } = useAuth();
+  
+  // Return null if product is undefined
+  if (!product) {
+    return null;
+  }
+  
   const {
     _id,
     name,
@@ -15,7 +21,7 @@ const ProductCard = ({ product }) => {
     status
   } = product;
 
-  const isOwner = user && owner === user._id;
+  const isOwner = user && owner && user._id && owner === user._id;
 
   return (
     <motion.div
