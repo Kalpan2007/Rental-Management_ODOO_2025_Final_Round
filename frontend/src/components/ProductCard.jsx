@@ -63,7 +63,7 @@ const ProductCard = ({ product }) => {
         <div className="flex justify-between items-start mb-2">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white truncate">{name}</h3>
           <span className="text-primary-600 dark:text-primary-400 font-bold">
-            ${typeof price === 'number' ? price.toFixed(2) : price}/day
+            ${typeof product.basePrice === 'number' ? product.basePrice.toFixed(2) : (typeof price === 'number' ? price.toFixed(2) : price)}/day
           </span>
         </div>
         

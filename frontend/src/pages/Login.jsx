@@ -24,13 +24,19 @@ const Login = () => {
       setLoading(true);
       setError(null);
       // Pass credentials as a single object
-      await login({
+      const result = await login({
         email: data.email,
         password: data.password
       });
+      
+      console.log('Login successful:', result);
+      
+      // Navigate to the intended destination
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to login');
+      console.error('Login error in component:', err);
+      setError(err.response?.data?.message || 'Invalid email or password');
+    } finally {
       setLoading(false);
     }
   };
