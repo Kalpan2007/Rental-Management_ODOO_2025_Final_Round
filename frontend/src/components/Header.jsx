@@ -60,7 +60,7 @@ const Header = () => {
                   <Menu.Item>
                     {({ active }) => (
                       <Link
-                        to="/my-bookings"
+                        to="/bookings"
                         className={`${active ? 'bg-primary-50 dark:bg-gray-600' : ''} block px-4 py-2 text-gray-700 dark:text-gray-200`}
                       >
                         My Bookings

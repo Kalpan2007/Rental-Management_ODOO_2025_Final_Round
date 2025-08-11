@@ -231,18 +231,18 @@ const ProductDetail = () => {
         endDate: endDateTime.toISOString(),
         totalPrice: calculatedTotalPrice,
         endUser: {
-          name: user.name || '',
+          firstName: user.name?.split(' ')[0] || '',
+          lastName: user.name?.split(' ')[1] || '',
           email: user.email || '',
           phone: user.phone || ''
         }
-        // userId is not needed as the backend will get it from the JWT token
       };
 
       const response = await createBooking(bookingData);
       
       if (response.success) {
         toast.success('Booking created successfully!');
-        navigate(`/my-bookings/${response.data._id}`);
+        navigate(`/bookings/${response.data._id}`);
       } else {
         toast.error(response.error || 'Failed to create booking. Please try again.');
       }
