@@ -1,6 +1,15 @@
 // routes/products.js
 const express = require('express');
-const { createProduct, listProducts, getProduct, updateProduct, deleteProduct, checkAvailability, getProductCalendar } = require('../controllers/productController');
+const { 
+  createProduct, 
+  listProducts, 
+  getProduct, 
+  updateProduct, 
+  deleteProduct, 
+  checkAvailability, 
+  getProductCalendar,
+  moderateProduct
+} = require('../controllers/productController');
 const { protect, admin } = require('../middlewares/auth');
 // Assume multer for file uploads
 const multer = require('multer');
@@ -8,14 +17,20 @@ const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
-router.post('/', protect, admin, upload.array('images'), createProduct);
-router.get('/', listProducts); // Public for browsing
-// Specific routes with fixed paths should come before routes with parameters
-router.get('/calendar/:id', getProductCalendar); // Get availability calendar for a product
-router.get('/availability/:id', checkAvailability); // Check availability for specific dates
-// Routes with parameters
-router.get('/:id', getProduct);
-router.put('/:id', protect, admin, updateProduct);
-router.delete('/:id', protect, admin, deleteProduct);
+// Product creation and management (available to all authenticated users)
+router.post('/', protect, upload.array('images'), createProduct);
+router.put('/:id', protect, upload.array('images'), updateProduct);
+router.delete('/:id', protect, deleteProduct);
+
+// Product moderation (admin only)
+router.post('/:id/moderate', protect, admin, moderateProduct);
+
+// Public routes for browsing products
+router.get('/', protect, listProducts); // Protected to filter by user role
+router.get('/:id', protect, getProduct); // Protected to handle visibility rules
+
+// Availability checking
+router.get('/calendar/:id', protect, getProductCalendar);
+router.get('/availability/:id', protect, checkAvailability);
 
 module.exports = router;
