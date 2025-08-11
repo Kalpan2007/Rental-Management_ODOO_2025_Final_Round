@@ -2,10 +2,15 @@ const Product = require('../models/Product');
 const Booking = require('../models/Booking');
 const uploadImage = require('../services/cloudinaryService');
 
-// Create product
+// Create product (now available for all users)
 const createProduct = async (req, res) => {
   try {
-    const product = new Product(req.body);
+    const product = new Product({
+      ...req.body,
+      owner: req.user._id, // Set current user as owner
+      status: 'pending' // All new products start as pending
+    });
+
     if (req.files) {
       product.images = await Promise.all(req.files.map(file => uploadImage(file)));
     }
@@ -19,8 +24,25 @@ const createProduct = async (req, res) => {
 // List products (filters, pagination)
 const listProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 10, category, minPrice, maxPrice, startDate, endDate, search } = req.query;
+    const { page = 1, limit = 10, category, minPrice, maxPrice, startDate, endDate, search, status } = req.query;
     const query = {};
+    
+    // Only show approved products to regular users, allow admins to see all
+    if (req.user.role !== 'admin') {
+      query.status = 'approved';
+    } else if (status) {
+      query.status = status;
+    }
+
+    // Allow users to see their own pending/rejected products
+    if (req.user.role === 'customer') {
+      if (status && ['pending', 'rejected'].includes(status)) {
+        query.$and = [
+          { owner: req.user._id },
+          { status: status }
+        ];
+      }
+    }
     
     if (category) query.category = category;
     if (minPrice || maxPrice) {
@@ -33,7 +55,6 @@ const listProducts = async (req, res) => {
     // Filter by availability if dates provided
     let availableProductIds = [];
     if (startDate && endDate) {
-      // Find products that don't have unavailable periods overlapping with requested dates
       const allProducts = await Product.find({});
       availableProductIds = allProducts
         .filter(product => product.isAvailableForRange(startDate, endDate))
@@ -42,13 +63,13 @@ const listProducts = async (req, res) => {
       if (availableProductIds.length > 0) {
         query._id = { $in: availableProductIds };
       } else {
-        // No products available for these dates
         return res.json({ products: [], total: 0, page, totalPages: 0 });
       }
     }
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
+      .populate('owner', 'name email phone') // Include owner details
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .lean();
@@ -67,10 +88,20 @@ const listProducts = async (req, res) => {
 // Get product
 const getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('owner', 'name email phone'); // Include owner details
+
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // Only show approved products to regular users unless they own the product
+    if (req.user.role !== 'admin' && 
+        product.status !== 'approved' && 
+        product.owner._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -83,6 +114,23 @@ const updateProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Check if user has permission to update
+    if (req.user.role !== 'admin' && product.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Regular users can't modify status or rejection reason
+    if (req.user.role !== 'admin') {
+      delete req.body.status;
+      delete req.body.rejectionReason;
+    }
+
+    // Reset status to pending if regular user updates an approved/rejected product
+    if (req.user.role === 'customer' && ['approved', 'rejected'].includes(product.status)) {
+      product.status = 'pending';
+      product.rejectionReason = null;
     }
     
     // Update fields
@@ -111,9 +159,48 @@ const deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+
+    // Check if user has permission to delete
+    if (req.user.role !== 'admin' && product.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
     
     await Product.deleteOne({ _id: req.params.id });
     res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Moderate product (admin only)
+const moderateProduct = async (req, res) => {
+  try {
+    // Only admins can moderate products
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { status, rejectionReason } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    // If rejecting, require a reason
+    if (status === 'rejected' && !rejectionReason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    product.status = status;
+    product.rejectionReason = status === 'rejected' ? rejectionReason : null;
+    product.updatedAt = Date.now();
+
+    await product.save();
+    res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -132,6 +219,11 @@ const checkAvailability = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Only check availability for approved products
+    if (product.status !== 'approved') {
+      return res.status(400).json({ message: 'Product is not available for booking' });
     }
     
     const isAvailable = product.isAvailableForRange(startDate, endDate, quantity);
@@ -162,6 +254,11 @@ const getProductCalendar = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Only show calendar for approved products
+    if (product.status !== 'approved') {
+      return res.status(400).json({ message: 'Product is not available for booking' });
     }
     
     // Calculate start and end of month
@@ -212,7 +309,6 @@ const getProductCalendar = async (req, res) => {
         date: dateString,
         status: bookedStatus || unavailableStatus || 'available',
         quantity: product.quantity,
-        // Add more details if needed
       });
     }
     
@@ -234,5 +330,6 @@ module.exports = {
   updateProduct,
   deleteProduct,
   checkAvailability,
-  getProductCalendar
+  getProductCalendar,
+  moderateProduct
 };

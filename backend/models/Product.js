@@ -9,6 +9,22 @@ const productSchema = new mongoose.Schema({
   pricingRules: [{ durationType: { type: String }, price: { type: Number } }],
   seasonalPricing: [{ startDate: { type: Date }, endDate: { type: Date }, price: { type: Number } }],
   discounts: [{ type: { type: String }, value: { type: Number }, startDate: { type: Date }, endDate: { type: Date } }],
+  // Added owner reference
+  owner: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: true 
+  },
+  // Added status for product moderation
+  status: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  // Added rejection reason for admin feedback
+  rejectionReason: { 
+    type: String
+  },
   // Updated availability to support ranges instead of individual dates
   availability: [{ 
     startDate: { type: Date, required: true },
@@ -23,6 +39,7 @@ const productSchema = new mongoose.Schema({
 
 productSchema.index({ category: 1 });
 productSchema.index({ name: 'text' });
+productSchema.index({ owner: 1 }); // Added index for owner queries
 
 // Method to check if product is available for a date range
 productSchema.methods.isAvailableForRange = function(startDate, endDate, quantity = 1) {
@@ -30,6 +47,9 @@ productSchema.methods.isAvailableForRange = function(startDate, endDate, quantit
   startDate = new Date(startDate);
   endDate = new Date(endDate);
   
+  // Only approved products can be rented
+  if (this.status !== 'approved') return false;
+
   // Check if any availability range overlaps with the requested period
   const unavailablePeriods = this.availability.filter(period => {
     // Skip available periods
