@@ -4,36 +4,92 @@ const { sendBookingConfirmation } = require('../services/notificationService');
 
 // Create booking
 const createBooking = async (req, res) => {
-  const { productId, startDate, endDate, endUser } = req.body;
-  const product = await Product.findById(productId);
-  if (!product) return res.status(404).json({ message: 'Product not found' });
+  try {
+    console.log('Received booking request:', req.body);
+    
+    const { productId, startDate, endDate, endUser, totalPrice } = req.body;
+    
+    // Validate all required fields
+    if (!productId) {
+      return res.status(400).json({ message: 'Product ID is required' });
+    }
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required' });
+    }
+    
+    // Validate totalPrice is a valid number and greater than 0
+    if (!totalPrice || isNaN(totalPrice) || totalPrice <= 0) {
+      return res.status(400).json({ message: 'Invalid total price' });
+    }
 
-  // Check availability (prevent double-booking)
-  const overlapping = await Booking.find({
-    productId,
-    $or: [
-      { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
-    ],
-  });
-  if (overlapping.length > 0) return res.status(400).json({ message: 'Product not available' });
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
 
-  // Calculate prices (placeholder logic)
-  const unitPrice = 100;
-  const totalPrice = unitPrice * ((endDate - startDate) / (24 * 60 * 60 * 1000)); // days
+    // Get the base price from the product
+    const basePrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
+    if (basePrice <= 0) {
+      return res.status(400).json({ message: 'Invalid base price for the product' });
+    }
 
-  const booking = new Booking({
-    customerId: req.user.id,
-    productId,
-    startDate,
-    endDate,
-    unitPrice,
-    totalPrice,
-    endUser,
-  });
-  await booking.save();
+    // Calculate unit price (daily rate)
+    const rentDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+    const unitPrice = totalPrice / rentDays;
 
-  await sendBookingConfirmation(booking);
-  res.status(201).json(booking);
+    // Check availability (prevent double-booking)
+    const overlapping = await Booking.find({
+      productId,
+      status: { $nin: ['cancelled'] }, // Ignore cancelled bookings
+      $or: [
+        { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
+      ],
+    });
+    
+    if (overlapping.length > 0) {
+      return res.status(400).json({ message: 'Product not available for the selected dates' });
+    }
+
+    let newBooking = new Booking({
+      customerId: req.user.id,
+      productId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      unitPrice,
+      totalPrice,
+      endUser,
+      status: 'pending'
+    });
+    
+    try {
+      newBooking = await newBooking.save();
+      
+      // Only try to send confirmation if we have user email
+      if (req.user.email) {
+        try {
+          await sendBookingConfirmation(newBooking);
+        } catch (emailError) {
+          console.error('Failed to send booking confirmation email:', emailError);
+          // Don't fail the booking creation if email fails
+        }
+      }
+      
+      res.status(201).json(newBooking);
+    } catch (saveError) {
+      console.error('Error saving booking:', saveError);
+      res.status(500).json({ 
+        message: 'Failed to create booking', 
+        error: saveError.message 
+      });
+    }
+  } catch (error) {
+    console.error('Error in booking creation process:', error);
+    res.status(500).json({ 
+      message: 'Failed to process booking request', 
+      error: error.message 
+    });
+  }
 };
 
 // List bookings

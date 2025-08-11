@@ -43,7 +43,10 @@ const verifyOtp = async (req, res) => {
   await user.save();
 
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token });
+  // Return both token and user data (excluding password)
+  const userData = user.toObject();
+  delete userData.password;
+  res.json({ token, user: userData });
 };
 
 const login = async (req, res) => {
@@ -53,7 +56,10 @@ const login = async (req, res) => {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token });
+  // Return both token and user data (excluding password)
+  const userData = user.toObject();
+  delete userData.password;
+  res.json({ token, user: userData });
 };
 
 const me = async (req, res) => {
