@@ -11,11 +11,17 @@ import ProductDetail from './pages/ProductDetail';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import CustomerDashboard from './pages/CustomerDashboard';
-// import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import BookingFlow from './pages/BookingFlow';
 import MyRentals from './pages/MyRentals';
+// Admin Pages
 import AdminProducts from './pages/AdminProducts';
 import AdminBookings from './pages/AdminBookings';
+import AdminAnalytics from './pages/AdminAnalytics';
+import AdminUsers from './pages/AdminUsers';
+import AdminSettings from './pages/AdminSettings';
+import AdminReports from './pages/AdminReports';
+import AdminNotifications from './pages/AdminNotifications';
 import ProfilePage from './pages/ProfilePage';
 
 // Components
@@ -66,13 +72,13 @@ function App() {
             } />
             
             {/* Protected Admin Routes */}
-            {/* <Route path="/admin/dashboard" element={
+            <Route path="/admin/dashboard" element={
               <ProtectedRoute requiredRole="admin">
                 <Layout>
                   <AdminDashboard />
                 </Layout>
               </ProtectedRoute>
-            } /> */}
+            } />
             <Route path="/admin/products" element={
               <ProtectedRoute requiredRole="admin">
                 <Layout>
@@ -84,6 +90,41 @@ function App() {
               <ProtectedRoute requiredRole="admin">
                 <Layout>
                   <AdminBookings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/analytics" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout>
+                  <AdminAnalytics />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout>
+                  <AdminUsers />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout>
+                  <AdminSettings />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout>
+                  <AdminReports />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/notifications" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout>
+                  <AdminNotifications />
                 </Layout>
               </ProtectedRoute>
             } />
