@@ -6,6 +6,7 @@ import AdminRoute from './AdminRoute';
 import Home from '../pages/Home';
 import Products from '../pages/Products';
 import ProductDetail from '../pages/ProductDetail';
+import ProductForm from '../pages/ProductForm';
 import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import Unauthorized from '../pages/Unauthorized';
@@ -19,7 +20,7 @@ import BookingDetail from '../pages/BookingDetail';
 // Admin Pages
 import Dashboard from '../pages/admin/Dashboard';
 import AdminProducts from '../pages/admin/Products';
-import ProductForm from '../pages/admin/ProductForm';
+import AdminProductForm from '../pages/admin/ProductForm';
 import Bookings from '../pages/admin/Bookings';
 import AdminBookingDetail from '../pages/admin/BookingDetail';
 import Users from '../pages/admin/Users';
@@ -43,14 +44,16 @@ const AppRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/bookings/:id" element={<BookingDetail />} />
+        <Route path="/products/new" element={<ProductForm />} />
+        <Route path="/products/edit/:id" element={<ProductForm />} />
       </Route>
       
       {/* Admin Routes */}
       <Route element={<AdminRoute />}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/products" element={<AdminProducts />} />
-        <Route path="/admin/products/new" element={<ProductForm />} />
-        <Route path="/admin/products/edit/:id" element={<ProductForm />} />
+        <Route path="/admin/products/new" element={<AdminProductForm />} />
+        <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
         <Route path="/admin/bookings" element={<Bookings />} />
         <Route path="/admin/bookings/:id" element={<AdminBookingDetail />} />
         <Route path="/admin/users" element={<Users />} />

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProductCard = ({ product }) => {
+  const { user } = useAuth();
   const {
     _id,
     name,
@@ -9,7 +11,11 @@ const ProductCard = ({ product }) => {
     images,
     category,
     availability,
+    owner,
+    status
   } = product;
+
+  const isOwner = user && owner === user._id;
 
   return (
     <motion.div
@@ -31,6 +37,20 @@ const ProductCard = ({ product }) => {
             </span>
           </div>
         )}
+        {status === 'pending' && (
+          <div className="absolute top-2 right-2">
+            <span className="text-white font-semibold px-3 py-1 bg-yellow-500 rounded-full text-sm">
+              Pending Approval
+            </span>
+          </div>
+        )}
+        {status === 'rejected' && (
+          <div className="absolute top-2 right-2">
+            <span className="text-white font-semibold px-3 py-1 bg-red-500 rounded-full text-sm">
+              Rejected
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="p-4">
@@ -46,12 +66,22 @@ const ProductCard = ({ product }) => {
             {category}
           </span>
           
-          <Link
-            to={`/products/${_id}`}
-            className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium"
-          >
-            View Details
-          </Link>
+          <div className="flex items-center space-x-2">
+            {isOwner && (
+              <Link
+                to={`/products/edit/${_id}`}
+                className="text-yellow-600 dark:text-yellow-400 hover:underline text-sm font-medium"
+              >
+                Edit
+              </Link>
+            )}
+            <Link
+              to={`/products/${_id}`}
+              className="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium"
+            >
+              View Details
+            </Link>
+          </div>
         </div>
       </div>
     </motion.div>
