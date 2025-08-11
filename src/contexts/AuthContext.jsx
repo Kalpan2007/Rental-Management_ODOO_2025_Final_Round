@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer, useEffect } from 'react';
 
 const AuthContext = createContext();
 
@@ -37,11 +37,10 @@ const initialState = {
   loading: true
 };
 
-export const AuthProvider = ({ children }) => {
+function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    // Check for stored auth data on app start
     const storedToken = localStorage.getItem('rentalease_token');
     const storedUser = localStorage.getItem('rentalease_user');
     
@@ -84,12 +83,14 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
+
+export { AuthProvider, useAuth };
