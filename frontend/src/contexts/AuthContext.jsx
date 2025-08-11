@@ -14,15 +14,26 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
+      const storedUser = localStorage.getItem('user');
+      if (token && storedUser) {
         try {
           const userData = await getCurrentUser();
-          setUser(userData);
+          if (userData) {
+            setUser(userData);
+          } else {
+            // If getCurrentUser returns null, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
         } catch (err) {
           console.error('Failed to fetch user data:', err);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
+      } else {
+        // If either token or user is missing, clear both
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
       setLoading(false);
     };

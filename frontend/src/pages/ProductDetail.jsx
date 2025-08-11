@@ -52,33 +52,120 @@ const ProductDetail = () => {
   useEffect(() => {
     if (product && startDate && endDate) {
       const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-      const price = days * product.pricePerDay;
-      setTotalPrice(price);
+      if (days <= 0) {
+        setTotalPrice(0);
+        return;
+      }
+      
+      // Get the base price from either basePrice or first pricing rule
+      const basePrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
+      let finalPrice = basePrice * days;
+
+      // Check if there are pricing rules
+      if (product.pricingRules && product.pricingRules.length > 0) {
+        const matchingRule = product.pricingRules.find(rule => 
+          rule.durationType === 'day' || 
+          (rule.durationType === 'week' && days >= 7) || 
+          (rule.durationType === 'month' && days >= 30)
+        );
+        
+        if (matchingRule && matchingRule.price) {
+          if (matchingRule.durationType === 'day') {
+            finalPrice = matchingRule.price * days;
+          } else if (matchingRule.durationType === 'week') {
+            finalPrice = matchingRule.price * Math.ceil(days / 7);
+          } else if (matchingRule.durationType === 'month') {
+            finalPrice = matchingRule.price * Math.ceil(days / 30);
+          }
+        }
+      }
+
+      // Apply seasonal pricing if applicable
+      if (product.seasonalPricing && product.seasonalPricing.length > 0) {
+        const applicableSeason = product.seasonalPricing.find(season => {
+          const seasonStart = new Date(season.startDate);
+          const seasonEnd = new Date(season.endDate);
+          return startDate >= seasonStart && endDate <= seasonEnd;
+        });
+
+        if (applicableSeason) {
+          finalPrice = applicableSeason.price * days;
+        }
+      }
+
+      // Apply discounts if applicable
+      if (product.discounts && product.discounts.length > 0) {
+        const applicableDiscount = product.discounts.find(discount => {
+          const discountStart = discount.startDate ? new Date(discount.startDate) : null;
+          const discountEnd = discount.endDate ? new Date(discount.endDate) : null;
+          const meetsDateCriteria = (!discountStart || startDate >= discountStart) && 
+                                  (!discountEnd || endDate <= discountEnd);
+          const meetsDurationCriteria = !discount.minimumDuration || days >= discount.minimumDuration;
+          return meetsDateCriteria && meetsDurationCriteria;
+        });
+
+        if (applicableDiscount) {
+          if (applicableDiscount.type === 'percentage') {
+            finalPrice = finalPrice * (1 - applicableDiscount.value / 100);
+          } else if (applicableDiscount.type === 'fixed') {
+            finalPrice = finalPrice - applicableDiscount.value;
+          }
+        }
+      }
+
+      setTotalPrice(Math.max(0, finalPrice)); // Ensure price is never negative
     }
   }, [product, startDate, endDate]);
 
   const handleCheckAvailability = async () => {
+    // Reset availability state
+    setIsAvailable(null);
+    
     if (!startDate || !endDate) {
       toast.error('Please select start and end dates');
       return;
     }
 
-    if (startDate >= endDate) {
+    // Ensure dates are valid
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const selectedStartDate = new Date(startDate);
+    selectedStartDate.setHours(0, 0, 0, 0);
+    
+    const selectedEndDate = new Date(endDate);
+    selectedEndDate.setHours(0, 0, 0, 0);
+
+    if (selectedStartDate < today) {
+      toast.error('Start date cannot be in the past');
+      return;
+    }
+
+    if (selectedStartDate >= selectedEndDate) {
       toast.error('End date must be after start date');
+      return;
+    }
+
+    const diffTime = Math.abs(selectedEndDate - selectedStartDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 90) {  // Assuming max rental period is 90 days
+      toast.error('Maximum rental period is 90 days');
       return;
     }
 
     try {
       setCheckingAvailability(true);
       const response = await checkProductAvailability(id, {
-        startDate,
-        endDate
+        startDate: selectedStartDate.toISOString(),
+        endDate: selectedEndDate.toISOString()
       });
       
       if (response.success) {
-        setIsAvailable(response.data?.available || false);
+        const isAvail = response.data?.isAvailable || false;
+        setIsAvailable(isAvail);
         
-        if (response.data?.available) {
+        if (isAvail) {
           toast.success('Product is available for selected dates!');
         } else {
           toast.error('Product is not available for selected dates');
@@ -87,12 +174,12 @@ const ProductDetail = () => {
         toast.error(response.error || 'Failed to check availability');
         setIsAvailable(false);
       }
-      
-      setCheckingAvailability(false);
     } catch (err) {
-      setCheckingAvailability(false);
-      toast.error('Failed to check availability');
       console.error('Error checking availability:', err);
+      toast.error('Failed to check availability. Please try again.');
+      setIsAvailable(false);
+    } finally {
+      setCheckingAvailability(false);
     }
   };
 
@@ -103,30 +190,46 @@ const ProductDetail = () => {
       return;
     }
 
+    if (isAvailable === null) {
+      toast.warning('Please check availability before booking');
+      return;
+    }
+
     if (!isAvailable) {
-      toast.error('Please check availability before booking');
+      toast.error('Product is not available for selected dates');
+      return;
+    }
+
+    if (totalPrice <= 0) {
+      toast.error('Invalid price calculation. Please try again.');
       return;
     }
 
     try {
       const bookingData = {
         productId: id,
-        startDate,
-        endDate,
-        totalPrice
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        totalPrice: parseFloat(totalPrice.toFixed(2))
       };
 
       const response = await createBooking(bookingData);
       
       if (response.success) {
         toast.success('Booking created successfully!');
-        navigate(`/bookings/${response.data._id}`);
+        navigate(`/my-bookings/${response.data._id}`);
       } else {
-        toast.error(response.error || 'Failed to create booking');
+        toast.error(response.error || 'Failed to create booking. Please try again.');
       }
     } catch (err) {
-      toast.error('Failed to create booking');
       console.error('Error creating booking:', err);
+      if (err.response?.status === 400) {
+        toast.error(err.response.data.message || 'Invalid booking request');
+      } else if (err.response?.status === 403) {
+        toast.error('You are not authorized to make this booking');
+      } else {
+        toast.error('Failed to create booking. Please try again later.');
+      }
     }
   };
 
@@ -189,10 +292,19 @@ const ProductDetail = () => {
             <div className="flex justify-between items-start">
               <div>
                 <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-                <p className="text-lg mb-2">${product.pricePerDay} / day</p>
+                {product.pricingRules && product.pricingRules.length > 0 && (
+                  <div className="text- text-brown-600 dark:text-brown-500">
+                    {product.pricingRules.map((rule, index) => (
+                      <p key={index}>
+                        ${rule.price} / {rule.durationType} 
+                        {rule.minimumDuration > 1 ? ` (min ${rule.minimumDuration} ${rule.durationType}s)` : ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${product.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {product.isAvailable ? 'Available' : 'Unavailable'}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${product.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {product.status === 'approved' ? 'Available' : 'Unavailable'}
               </span>
             </div>
 

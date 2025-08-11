@@ -5,10 +5,25 @@ const productSchema = new mongoose.Schema({
   description: { type: String },
   category: { type: String },
   images: [{ type: String }],
-  unitType: { type: String, enum: ['hour', 'day', 'week', 'month'], required: true },
-  pricingRules: [{ durationType: { type: String }, price: { type: Number } }],
-  seasonalPricing: [{ startDate: { type: Date }, endDate: { type: Date }, price: { type: Number } }],
-  discounts: [{ type: { type: String }, value: { type: Number }, startDate: { type: Date }, endDate: { type: Date } }],
+  unitType: { type: String, enum: ['hour', 'day', 'week', 'month'], required: true, default: 'day' },
+  basePrice: { type: Number, required: true }, // Base price per day
+  pricingRules: [{
+    durationType: { type: String, enum: ['hour', 'day', 'week', 'month'], required: true },
+    price: { type: Number, required: true },
+    minimumDuration: { type: Number, default: 1 }
+  }],
+  seasonalPricing: [{
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    price: { type: Number, required: true }
+  }],
+  discounts: [{
+    type: { type: String, enum: ['percentage', 'fixed'], required: true },
+    value: { type: Number, required: true },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    minimumDuration: { type: Number }
+  }],
   // Added owner reference
   owner: { 
     type: mongoose.Schema.Types.ObjectId, 
