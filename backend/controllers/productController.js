@@ -230,20 +230,57 @@ const checkAvailability = async (req, res) => {
 
     // Only check availability for approved products
     if (product.status !== 'approved') {
-      return res.status(400).json({ message: 'Product is not available for booking' });
+      return res.status(400).json({ 
+        message: 'Product is not available for booking',
+        status: product.status
+      });
     }
-    
-    const isAvailable = product.isAvailableForRange(startDate, endDate, quantity);
-    
+
+    // Convert string dates to Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Check for existing bookings
+    const existingBookings = await Booking.find({
+      product: id,
+      status: { $nin: ['cancelled', 'rejected'] },
+      $or: [
+        { startDate: { $lte: end }, endDate: { $gte: start } },
+        { startDate: { $gte: start, $lte: end } },
+        { endDate: { $gte: start, $lte: end } }
+      ]
+    });
+
+    // Check quantity availability
+    const bookedQuantity = existingBookings.length;
+    const isAvailable = bookedQuantity < product.quantity;
+
+    // Check custom availability periods
+    const customUnavailability = product.availability.some(period => {
+      if (!period.isAvailable) {
+        const periodStart = new Date(period.startDate);
+        const periodEnd = new Date(period.endDate);
+        return (start <= periodEnd && end >= periodStart);
+      }
+      return false;
+    });
+
     res.json({
       productId: id,
       startDate,
       endDate,
       quantity,
-      isAvailable
+      isAvailable: isAvailable && !customUnavailability,
+      availableQuantity: Math.max(0, product.quantity - bookedQuantity),
+      message: customUnavailability ? 'Product is under maintenance or unavailable for selected dates' : 
+               !isAvailable ? 'All units are booked for selected dates' : 'Product is available'
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Availability check error:', error);
+    res.status(500).json({ 
+      message: 'Failed to check availability',
+      error: error.message 
+    });
   }
 };
 
