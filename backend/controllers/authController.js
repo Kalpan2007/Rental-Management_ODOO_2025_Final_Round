@@ -1,8 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const otpGenerator = require('otp-generator');
 const User = require('../models/User');
 const validate = require('../middlewares/validation');
 const Joi = require('joi');
+const sendEmail = require('../services/emailService');
 
 const signupSchema = Joi.object({
   name: Joi.string().required(),
@@ -20,7 +22,24 @@ const signup = async (req, res) => {
   let user = await User.findOne({ email });
   if (user) return res.status(400).json({ message: 'User exists' });
 
-  user = new User({ name, email, password: await bcrypt.hash(password, 10), role });
+  const otp = otpGenerator.generate(6, { digits: true, alphabets: false, upperCase: false, specialChars: false });
+  user = new User({ name, email, password: await bcrypt.hash(password, 10), role, otp, otpExpires: Date.now() + 10 * 60 * 1000 });
+  await user.save();
+
+  await sendEmail(email, 'Verify OTP', `Your OTP is ${otp}`);
+  res.json({ message: 'OTP sent to email' });
+};
+
+
+const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || user.otp !== otp || user.otpExpires < Date.now()) {
+    return res.status(400).json({ message: 'Invalid OTP' });
+  }
+  user.isVerified = true;
+  user.otp = undefined;
+  user.otpExpires = undefined;
   await user.save();
 
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -42,4 +61,4 @@ const me = async (req, res) => {
   res.json(user);
 };
 
-module.exports = { signup, login, me, signupSchema, loginSchema };
+module.exports = { signup, verifyOtp, login, me, signupSchema, loginSchema };

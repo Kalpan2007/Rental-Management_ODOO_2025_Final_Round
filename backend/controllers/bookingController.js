@@ -66,9 +66,39 @@ const cancelBooking = async (req, res) => {
 
 // Confirm booking
 const confirmBooking = async (req, res) => {
-  const booking = await Booking.findByIdAndUpdate(req.params.id, { status: 'confirmed' }, { new: true });
-  // Send notification
-  res.json(booking);
+  try {
+    // Get booking with populated fields
+    let booking = await Booking.findById(req.params.id)
+      .populate('customerId')
+      .populate('productId');
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    // Generate contract
+    const { generateContract } = require('../services/pdfService');
+    const contractUrl = await generateContract(booking);
+    
+    // Update booking with contract URL and status
+    booking = await Booking.findByIdAndUpdate(
+      req.params.id, 
+      { 
+        status: 'confirmed',
+        contractUrl
+      }, 
+      { new: true }
+    );
+    
+    // Send notification
+    const { sendBookingConfirmation } = require('../services/notificationService');
+    await sendBookingConfirmation(booking);
+    
+    res.json(booking);
+  } catch (error) {
+    console.error('Error confirming booking:', error);
+    res.status(500).json({ message: 'Error confirming booking', error: error.message });
+  }
 };
 
 // Complete booking
