@@ -7,12 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-toastify';
+import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 
 const BookingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { darkMode } = useTheme();
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,17 +24,40 @@ const BookingDetail = () => {
   const [cancellingBooking, setCancellingBooking] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  // Handle payment success/failure redirects
+  useEffect(() => {
+    const paymentSuccess = searchParams.get('payment_success');
+    const paymentCancelled = searchParams.get('payment_cancelled');
+
+    if (paymentSuccess === 'true') {
+      toast.success('Payment completed successfully!');
+      // Invalidate and refetch booking data to get updated status
+      queryClient.invalidateQueries(['booking', id]);
+    } else if (paymentCancelled === 'true') {
+      toast.warning('Payment was cancelled');
+    }
+
+    // Clean up URL params
+    if (paymentSuccess || paymentCancelled) {
+      navigate(`/bookings/${id}`, { replace: true });
+    }
+  }, [searchParams, navigate, id, queryClient]);
+
   useEffect(() => {
     const fetchBooking = async () => {
       try {
         setLoading(true);
         const response = await getBookingById(id);
-        setBooking(response.data);
-        setLoading(false);
+        if (response.success) {
+          setBooking(response.data);
+        } else {
+          setError(response.error || 'Failed to load booking details');
+        }
       } catch (err) {
         setError('Failed to load booking details');
-        setLoading(false);
         console.error('Error fetching booking:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -44,15 +71,18 @@ const BookingDetail = () => {
 
     try {
       setCancellingBooking(true);
-      await cancelBooking(id);
+      const response = await cancelBooking(id);
       
-      // Update booking status locally
-      setBooking(prev => ({ ...prev, status: 'cancelled' }));
-      
-      toast.success('Booking cancelled successfully');
-      setCancellingBooking(false);
+      if (response.success) {
+        setBooking(prev => ({ ...prev, status: 'cancelled' }));
+        toast.success('Booking cancelled successfully');
+      } else {
+        toast.error(response.error || 'Failed to cancel booking');
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel booking');
+      toast.error('Failed to cancel booking');
+      console.error('Cancel booking error:', err);
+    } finally {
       setCancellingBooking(false);
     }
   };
@@ -62,16 +92,15 @@ const BookingDetail = () => {
       setProcessingPayment(true);
       const response = await createPayment({ bookingId: id });
       
-      // Redirect to payment page or handle Stripe checkout
-      if (response.data.url) {
-        window.location.href = response.data.url;
+      if (response.success && response.data.sessionUrl) {
+        window.location.href = response.data.sessionUrl;
       } else {
-        // Handle payment intent client-side
-        toast.success('Payment initiated');
-        navigate(`/payment/${response.data.paymentId}`);
+        toast.error(response.error || 'Failed to initiate payment');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to process payment');
+      toast.error('Failed to process payment');
+      console.error('Payment error:', err);
+    } finally {
       setProcessingPayment(false);
     }
   };
@@ -232,19 +261,27 @@ const BookingDetail = () => {
                 <div className="flex items-start">
                   <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md">
                     <img 
-                      src={booking.product.imageUrl || 'https://via.placeholder.com/80?text=No+Image'} 
-                      alt={booking.product.name} 
+                      src={booking.product?.images?.[0] || '/placeholder-image.png'} 
+                      alt={booking.product?.name || 'Product Image'} 
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/placeholder-image.png';
+                      }}
                     />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium">
-                      <Link to={`/products/${booking.product._id}`} className="hover:text-primary-600">
-                        {booking.product.name}
-                      </Link>
+                      {booking.product?._id ? (
+                        <Link to={`/products/${booking.product._id}`} className="hover:text-primary-600">
+                          {booking.product.name}
+                        </Link>
+                      ) : (
+                        <span>Product Unavailable</span>
+                      )}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{booking.product.category}</p>
-                    <p className="mt-1">${booking.product.pricePerDay} / day</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{booking.product?.category || 'N/A'}</p>
+                    <p className="mt-1">${booking.product?.pricePerDay || 0} / day</p>
                   </div>
                 </div>
               </div>
@@ -262,7 +299,7 @@ const BookingDetail = () => {
                     </div>
                     <div className="flex justify-between">
                       <span>Security Deposit</span>
-                      <span>${(booking.product.securityDeposit || 0).toFixed(2)}</span>
+                      <span>${(booking.product?.securityDeposit || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Taxes</span>
@@ -270,7 +307,7 @@ const BookingDetail = () => {
                     </div>
                     <div className="flex justify-between font-bold pt-2 border-t">
                       <span>Total</span>
-                      <span>${(booking.totalPrice + (booking.product.securityDeposit || 0) + (booking.totalPrice * 0.1)).toFixed(2)}</span>
+                      <span>${(booking.totalPrice + (booking.product?.securityDeposit || 0) + (booking.totalPrice * 0.1)).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
