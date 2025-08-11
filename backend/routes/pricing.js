@@ -1,11 +1,28 @@
 const express = require('express');
-const { addPricing, updatePricing, deletePricing } = require('../controllers/pricingController');
+const { 
+  createPricelist, 
+  getPricelists, 
+  getPricelistById, 
+  updatePricelist, 
+  deletePricelist, 
+  addPricingRule,
+  getProductPrice
+} = require('../controllers/pricingController');
 const { protect, admin } = require('../middlewares/auth');
 
 const router = express.Router();
 
-router.post('/', protect, admin, addPricing);
-router.put('/:id', protect, admin, updatePricing);
-router.delete('/:id', protect, admin, deletePricing);
+// Pricelist routes
+router.post('/pricelists', protect, admin, createPricelist);
+router.get('/pricelists', protect, getPricelists);
+router.get('/pricelists/:id', protect, getPricelistById);
+router.put('/pricelists/:id', protect, admin, updatePricelist);
+router.delete('/pricelists/:id', protect, admin, deletePricelist);
+
+// Pricing rule routes
+router.post('/pricelists/:id/rules', protect, admin, addPricingRule);
+
+// Product pricing calculation
+router.get('/calculate', protect, getProductPrice);
 
 module.exports = router;
