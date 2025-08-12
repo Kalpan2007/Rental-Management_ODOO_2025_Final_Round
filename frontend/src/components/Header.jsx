@@ -1,236 +1,588 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Menu, Transition } from '@headlessui/react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Bars3Icon, 
+  XMarkIcon, 
+  SunIcon, 
+  MoonIcon,
+  UserCircleIcon,
+  ChevronDownIcon,
+  ShoppingBagIcon,
+  Cog6ToothIcon,
+  ArrowRightOnRectangleIcon,
+  PlusCircleIcon
+} from '@heroicons/react/24/outline';
 
 const Header = () => {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout, loading } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
+  // Close mobile menu when authenticated state changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/', { replace: true });
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
-  return (
-    <header className="bg-white dark:bg-gray-800 shadow-md py-4">
-      <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-          RentalHub
-        </Link>
+  const toggleMobileMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
-        <div className="hidden md:flex items-center space-x-6">
-          <Link to="/products" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
-            Browse Products
-          </Link>
+  const closeMobileMenu = () => {
+    setIsMenuOpen(false);
+  };
+
+  // Navigation items
+  const navigationItems = [
+    { label: 'Browse Products', href: '/products', icon: ShoppingBagIcon },
+    { label: 'List Product', href: '/products/new', icon: PlusCircleIcon, authRequired: true },
+  ];
+
+  const userMenuItems = [
+    { label: 'My Profile', href: '/profile', icon: UserCircleIcon },
+    { label: 'My Bookings', href: '/my-bookings', icon: ShoppingBagIcon },
+    { label: 'My Products', href: '/my-products', icon: Cog6ToothIcon },
+  ];
+
+  const adminMenuItem = { label: 'Admin Dashboard', href: '/admin/dashboard', icon: Cog6ToothIcon };
+
+  return (
+    <motion.header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? darkMode
+            ? 'bg-[#583101]/95 backdrop-blur-md shadow-2xl border-b border-[#8b5e34]/30'
+            : 'bg-white/95 backdrop-blur-md shadow-2xl border-b border-[#d4a276]/30'
+          : darkMode
+          ? 'bg-[#603808]/90 backdrop-blur-sm'
+          : 'bg-white/90 backdrop-blur-sm'
+      }`}
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+    >
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center py-4">
           
-          {isAuthenticated ? (
-            <Menu as="div" className="relative">
-              <Menu.Button className="flex items-center space-x-1 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
-                <span>{user?.name || 'Account'}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </Menu.Button>
-              
-              <Transition
-                enter="transition duration-100 ease-out"
-                enterFrom="transform scale-95 opacity-0"
-                enterTo="transform scale-100 opacity-100"
-                leave="transition duration-75 ease-out"
-                leaveFrom="transform scale-100 opacity-100"
-                leaveTo="transform scale-95 opacity-0"
-              >
-                <Menu.Items className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-10">
-                  <Menu.Item>
-                    {({ active }) => (
-                      <Link
-                        to="/profile"
-                        className={`${active ? 'bg-primary-50 dark:bg-gray-600' : ''} block px-4 py-2 text-gray-700 dark:text-gray-200`}
-                      >
-                        Profile
-                      </Link>
-                    )}
-                  </Menu.Item>
-                  
-                  <Menu.Item>
-                    {({ active }) => (
-                      <Link
-                        to="/my-bookings"
-                        className={`${active ? 'bg-primary-50 dark:bg-gray-600' : ''} block px-4 py-2 text-gray-700 dark:text-gray-200`}
-                      >
-                        My Bookings
-                      </Link>
-                    )}
-                  </Menu.Item>
-                  
-                  {isAdmin && (
-                    <Menu.Item>
-                      {({ active }) => (
-                        <Link
-                          to="/admin/dashboard"
-                          className={`${active ? 'bg-primary-50 dark:bg-gray-600' : ''} block px-4 py-2 text-gray-700 dark:text-gray-200`}
-                        >
-                          Admin Dashboard
-                        </Link>
-                      )}
-                    </Menu.Item>
-                  )}
-                  
-                  <Menu.Item>
-                    {({ active }) => (
-                      <button
-                        onClick={handleLogout}
-                        className={`${active ? 'bg-primary-50 dark:bg-gray-600' : ''} block w-full text-left px-4 py-2 text-gray-700 dark:text-gray-200`}
-                      >
-                        Logout
-                      </button>
-                    )}
-                  </Menu.Item>
-                </Menu.Items>
-              </Transition>
-            </Menu>
-          ) : (
-            <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
-                Login
-              </Link>
-              <Link to="/signup" className="btn-primary">
-                Sign Up
-              </Link>
-            </div>
-          )}
-          
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-            aria-label="Toggle dark mode"
+          {/* Logo */}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {darkMode ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-              </svg>
-            )}
-          </button>
+            <Link 
+              to="/" 
+              className={`text-2xl font-bold transition-colors duration-200 ${
+                darkMode 
+                  ? 'text-[#ffedd8] hover:text-[#f3d5b5]' 
+                  : 'text-[#583101] hover:text-[#6f4518]'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  darkMode ? 'bg-[#bc8a5f]' : 'bg-[#8b5e34]'
+                }`}>
+                  <span className="text-[#ffedd8] font-bold text-sm">R</span>
+                </div>
+                RentalHub
+              </span>
+            </Link>
+          </motion.div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-8">
+            {navigationItems.map((item) => {
+              if (item.authRequired && !isAuthenticated) return null;
+              
+              return (
+                <motion.div key={item.href} whileHover={{ y: -2 }} whileTap={{ y: 0 }}>
+                  <Link
+                    to={item.href}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      location.pathname === item.href
+                        ? darkMode
+                          ? 'bg-[#bc8a5f] text-[#ffedd8] shadow-lg'
+                          : 'bg-[#8b5e34] text-[#ffedd8] shadow-lg'
+                        : darkMode
+                        ? 'text-[#e7bc91] hover:text-[#ffedd8] hover:bg-[#8b5e34]/30'
+                        : 'text-[#6f4518] hover:text-[#583101] hover:bg-[#f3d5b5]/50'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </nav>
+
+          {/* Desktop User Actions */}
+          <div className="hidden lg:flex items-center space-x-4">
+            
+            {/* Theme Toggle */}
+            <motion.button
+              onClick={toggleDarkMode}
+              className={`p-2.5 rounded-lg transition-all duration-200 ${
+                darkMode
+                  ? 'bg-[#8b5e34]/30 text-[#f3d5b5] hover:bg-[#8b5e34]/50 hover:text-[#ffedd8]'
+                  : 'bg-[#f3d5b5]/50 text-[#8b5e34] hover:bg-[#e7bc91]/50 hover:text-[#6f4518]'
+              }`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Toggle dark mode"
+            >
+              <AnimatePresence mode="wait">
+                {darkMode ? (
+                  <motion.div
+                    key="sun"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <SunIcon className="w-5 h-5" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="moon"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <MoonIcon className="w-5 h-5" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+
+            {/* Authentication Section */}
+            <AnimatePresence mode="wait">
+              {loading ? (
+                <motion.div 
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin opacity-50" />
+                </motion.div>
+              ) : isAuthenticated ? (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {/* User Menu */}
+                  <Menu as="div" className="relative">
+                    <Menu.Button className={`flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ${
+                      darkMode
+                        ? 'bg-[#8b5e34]/30 text-[#ffedd8] hover:bg-[#8b5e34]/50 border border-[#bc8a5f]/30'
+                        : 'bg-[#f3d5b5]/50 text-[#583101] hover:bg-[#e7bc91]/50 border border-[#d4a276]/30'
+                    }`}>
+                      <UserCircleIcon className="w-5 h-5" />
+                      <span className="hidden md:block">{user?.name || 'Account'}</span>
+                      <ChevronDownIcon className="w-4 h-4" />
+                    </Menu.Button>
+                    
+                    <Transition
+                      enter="transition duration-200 ease-out"
+                      enterFrom="transform scale-95 opacity-0"
+                      enterTo="transform scale-100 opacity-100"
+                      leave="transition duration-150 ease-out"
+                      leaveFrom="transform scale-100 opacity-100"
+                      leaveTo="transform scale-95 opacity-0"
+                    >
+                      <Menu.Items className={`absolute right-0 mt-3 w-56 rounded-xl shadow-2xl py-2 z-50 border backdrop-blur-md ${
+                        darkMode
+                          ? 'bg-[#603808]/95 border-[#8b5e34]/50'
+                          : 'bg-white/95 border-[#d4a276]/30'
+                      }`}>
+                        
+                        {/* User Info Header */}
+                        <div className={`px-4 py-3 border-b ${
+                          darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
+                        }`}>
+                          <p className={`text-sm font-medium ${
+                            darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                          }`}>
+                            {user?.name}
+                          </p>
+                          <p className={`text-xs ${
+                            darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                          }`}>
+                            {user?.email}
+                          </p>
+                        </div>
+
+                        {/* Menu Items */}
+                        {userMenuItems.map((item) => (
+                          <Menu.Item key={item.href}>
+                            {({ active }) => (
+                              <Link
+                                to={item.href}
+                                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                                  active
+                                    ? darkMode
+                                      ? 'bg-[#8b5e34]/30 text-[#ffedd8]'
+                                      : 'bg-[#f3d5b5]/50 text-[#583101]'
+                                    : darkMode
+                                    ? 'text-[#e7bc91] hover:text-[#ffedd8]'
+                                    : 'text-[#6f4518] hover:text-[#583101]'
+                                }`}
+                              >
+                                <item.icon className="w-4 h-4" />
+                                {item.label}
+                              </Link>
+                            )}
+                          </Menu.Item>
+                        ))}
+                        
+                        {/* Admin Menu Item */}
+                        {isAdmin && (
+                          <Menu.Item>
+                            {({ active }) => (
+                              <Link
+                                to={adminMenuItem.href}
+                                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                                  active
+                                    ? darkMode
+                                      ? 'bg-[#8b5e34]/30 text-[#ffedd8]'
+                                      : 'bg-[#f3d5b5]/50 text-[#583101]'
+                                    : darkMode
+                                    ? 'text-[#e7bc91] hover:text-[#ffedd8]'
+                                    : 'text-[#6f4518] hover:text-[#583101]'
+                                }`}
+                              >
+                                <adminMenuItem.icon className="w-4 h-4" />
+                                {adminMenuItem.label}
+                              </Link>
+                            )}
+                          </Menu.Item>
+                        )}
+                        
+                        {/* Logout */}
+                        <div className={`border-t mt-2 pt-2 ${
+                          darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
+                        }`}>
+                          <Menu.Item>
+                            {({ active }) => (
+                              <button
+                                onClick={handleLogout}
+                                className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                                  active
+                                    ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                                    : darkMode
+                                    ? 'text-[#e7bc91] hover:text-red-400'
+                                    : 'text-[#6f4518] hover:text-red-600'
+                                }`}
+                              >
+                                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                                Sign Out
+                              </button>
+                            )}
+                          </Menu.Item>
+                        </div>
+                      </Menu.Items>
+                    </Transition>
+                  </Menu>
+                </motion.div>
+              ) : (
+                <motion.div
+                  className="flex items-center gap-3"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Link
+                    to="/login"
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      darkMode
+                        ? 'text-[#e7bc91] hover:text-[#ffedd8] hover:bg-[#8b5e34]/30'
+                        : 'text-[#6f4518] hover:text-[#583101] hover:bg-[#f3d5b5]/50'
+                    }`}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className={`px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
+                      darkMode
+                        ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8]'
+                        : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]'
+                    }`}
+                  >
+                    Get Started
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <motion.button
+            className={`lg:hidden p-2 rounded-lg transition-colors ${
+              darkMode
+                ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+            }`}
+            onClick={toggleMobileMenu}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <AnimatePresence mode="wait">
+              {isMenuOpen ? (
+                <motion.div
+                  key="close"
+                  initial={{ rotate: -90 }}
+                  animate={{ rotate: 0 }}
+                  exit={{ rotate: 90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="menu"
+                  initial={{ rotate: 90 }}
+                  animate={{ rotate: 0 }}
+                  exit={{ rotate: -90 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Bars3Icon className="w-6 h-6" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden p-2 rounded-md text-gray-700 dark:text-gray-300"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-          className="md:hidden bg-white dark:bg-gray-800 py-4 px-4 shadow-lg"
-        >
-          <Link
-            to="/products"
-            className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Browse Products
-          </Link>
-          
-          {isAuthenticated ? (
-            <>
-              <Link
-                to="/profile"
-                className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Profile
-              </Link>
-              
-              <Link
-                to="/my-rentals"
-                className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                My Rentals
-              </Link>
-              
-              {isAdmin && (
-                <Link
-                  to="/admin/dashboard"
-                  className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Admin Dashboard
-                </Link>
-              )}
-              
-              <button
-                onClick={() => {
-                  handleLogout();
-                  setIsMenuOpen(false);
-                }}
-                className="block w-full text-left py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Login
-              </Link>
-              
-              <Link
-                to="/signup"
-                className="block py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Sign Up
-              </Link>
-            </>
-          )}
-          
-          <div className="flex items-center mt-4">
-            <button
-              onClick={() => {
-                toggleDarkMode();
-                setIsMenuOpen(false);
-              }}
-              className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className={`lg:hidden border-t overflow-hidden ${
+                darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
+              }`}
             >
-              <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-              {darkMode ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </motion.div>
-      )}
-    </header>
+              <div className="py-4 space-y-2">
+                
+                {/* Navigation Links */}
+                {navigationItems.map((item, index) => {
+                  if (item.authRequired && !isAuthenticated) return null;
+                  
+                  return (
+                    <motion.div
+                      key={item.href}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.3 }}
+                    >
+                      <Link
+                        to={item.href}
+                        onClick={closeMobileMenu}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                          location.pathname === item.href
+                            ? darkMode
+                              ? 'bg-[#bc8a5f] text-[#ffedd8]'
+                              : 'bg-[#8b5e34] text-[#ffedd8]'
+                            : darkMode
+                            ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                            : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+
+                {/* Authentication Section */}
+                <div className={`border-t pt-4 mt-4 ${
+                  darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
+                }`}>
+                  <AnimatePresence mode="wait">
+                    {isAuthenticated ? (
+                      <motion.div
+                        key="authenticated"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-2"
+                      >
+                        {/* User Info */}
+                        <div className="px-4 py-2">
+                          <p className={`text-sm font-medium ${
+                            darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                          }`}>
+                            {user?.name}
+                          </p>
+                          <p className={`text-xs ${
+                            darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                          }`}>
+                            {user?.email}
+                          </p>
+                        </div>
+
+                        {/* User Menu Items */}
+                        {userMenuItems.map((item, index) => (
+                          <motion.div
+                            key={item.href}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: (index + 2) * 0.1, duration: 0.3 }}
+                          >
+                            <Link
+                              to={item.href}
+                              onClick={closeMobileMenu}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                                darkMode
+                                  ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                                  : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+                              }`}
+                            >
+                              <item.icon className="w-5 h-5" />
+                              {item.label}
+                            </Link>
+                          </motion.div>
+                        ))}
+
+                        {/* Admin Link */}
+                        {isAdmin && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.5, duration: 0.3 }}
+                          >
+                            <Link
+                              to={adminMenuItem.href}
+                              onClick={closeMobileMenu}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                                darkMode
+                                  ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                                  : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+                              }`}
+                            >
+                              <adminMenuItem.icon className="w-5 h-5" />
+                              {adminMenuItem.label}
+                            </Link>
+                          </motion.div>
+                        )}
+
+                        {/* Logout Button */}
+                        <motion.button
+                          onClick={() => {
+                            handleLogout();
+                            closeMobileMenu();
+                          }}
+                          className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                            darkMode
+                              ? 'text-[#e7bc91] hover:bg-red-900/20 hover:text-red-400'
+                              : 'text-[#6f4518] hover:bg-red-50 hover:text-red-600'
+                          }`}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.6, duration: 0.3 }}
+                        >
+                          <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                          Sign Out
+                        </motion.button>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="unauthenticated"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-3"
+                      >
+                        <Link
+                          to="/login"
+                          onClick={closeMobileMenu}
+                          className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                            darkMode
+                              ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                              : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+                          }`}
+                        >
+                          Sign In
+                        </Link>
+                        <Link
+                          to="/signup"
+                          onClick={closeMobileMenu}
+                          className={`block px-4 py-3 rounded-lg font-semibold text-center transition-all duration-200 ${
+                            darkMode
+                              ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8]'
+                              : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]'
+                          }`}
+                        >
+                          Get Started
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Theme Toggle Mobile */}
+                <div className={`border-t pt-4 mt-4 ${
+                  darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
+                }`}>
+                  <button
+                    onClick={() => {
+                      toggleDarkMode();
+                      closeMobileMenu();
+                    }}
+                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                      darkMode
+                        ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                        : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
+                    }`}
+                  >
+                    {darkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+                    {darkMode ? 'Light Mode' : 'Dark Mode'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.header>
   );
 };
 
