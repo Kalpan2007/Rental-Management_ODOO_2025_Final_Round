@@ -7,7 +7,7 @@ const createProduct = async (req, res) => {
   try {
     const product = new Product({
       ...req.body,
-      owner: req.user._id, // Set current user as owner
+      owner: req.user.id, // Set current user as owner (JWT payload uses 'id')
       status: 'pending' // All new products start as pending
     });
 
@@ -105,7 +105,7 @@ const getProduct = async (req, res) => {
     // Only show approved products to regular users unless they own the product
     if (req.user.role !== 'admin' && 
         product.status !== 'approved' && 
-        product.owner._id.toString() !== req.user._id.toString()) {
+        product.owner._id.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -124,7 +124,7 @@ const updateProduct = async (req, res) => {
     }
 
     // Check if user has permission to update
-    if (req.user.role !== 'admin' && product.owner.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && product.owner.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
     
@@ -168,7 +168,7 @@ const deleteProduct = async (req, res) => {
     }
 
     // Check if user has permission to delete
-    if (req.user.role !== 'admin' && product.owner.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && product.owner.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
     
@@ -290,6 +290,8 @@ const getProductCalendar = async (req, res) => {
     const { id } = req.params;
     const { year, month } = req.query;
     
+    console.log(`🔥 Calendar Request - Product ID: ${id}, Year: ${year}, Month: ${month}`);
+    
     if (!year || !month) {
       return res.status(400).json({ message: 'Year and month are required' });
     }
@@ -297,11 +299,15 @@ const getProductCalendar = async (req, res) => {
     // Get the product
     const product = await Product.findById(id);
     if (!product) {
+      console.log(`❌ Product not found: ${id}`);
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    console.log(`🔥 Product found - Name: ${product.name}, Status: ${product.status}`);
+
     // Only show calendar for approved products
     if (product.status !== 'approved') {
+      console.log(`❌ Product status is '${product.status}', not 'approved'`);
       return res.status(400).json({ message: 'Product is not available for booking' });
     }
     

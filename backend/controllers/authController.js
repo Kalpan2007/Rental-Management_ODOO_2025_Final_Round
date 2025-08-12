@@ -23,6 +23,7 @@ const signup = async (req, res) => {
   if (user) return res.status(400).json({ message: 'User exists' });
 
   const otp = otpGenerator.generate(6, { digits: true, alphabets: false, upperCase: false, specialChars: false });
+  console.log(`🔥 Generated OTP for ${email}: ${otp}`); // Debug log
   user = new User({ name, email, password: await bcrypt.hash(password, 10), role, otp, otpExpires: Date.now() + 10 * 60 * 1000 });
   await user.save();
 
@@ -43,10 +44,7 @@ const verifyOtp = async (req, res) => {
   await user.save();
 
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  // Return both token and user data (excluding password)
-  const userData = user.toObject();
-  delete userData.password;
-  res.json({ token, user: userData });
+  res.json({ token });
 };
 
 const login = async (req, res) => {
@@ -56,10 +54,7 @@ const login = async (req, res) => {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
   const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  // Return both token and user data (excluding password)
-  const userData = user.toObject();
-  delete userData.password;
-  res.json({ token, user: userData });
+  res.json({ token });
 };
 
 const me = async (req, res) => {
