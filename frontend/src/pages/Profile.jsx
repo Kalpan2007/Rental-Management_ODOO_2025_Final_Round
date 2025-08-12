@@ -1,757 +1,395 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { updateUser } from '../api/auth';
+import { getBookings } from '../api/bookings';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ProductCard from '../components/ProductCard';
-import ErrorBoundary from '../components/ErrorBoundary';
 import { toast } from 'react-toastify';
-import { getProducts } from '../api/products';
 
-const containerVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      staggerChildren: 0.1
-    }
-  },
-  exit: {
-    opacity: 0,
-    y: -20,
-    transition: {
-      duration: 0.3
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100
-    }
-  }
-};
-
-const ProfileComponent = () => {
-  const { user, updateUser } = useAuth();
+const Profile = () => {
+  const { user, updateUserContext } = useAuth();
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(false);
-
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
-    defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
-      phone: user?.phone || '',
-      address: user?.address || ''
-    }
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    address: user?.address || ''
   });
 
-  // Update form when user data changes
   useEffect(() => {
-    if (user) {
-      reset({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || ''
-      });
-    }
-  }, [user, reset]);
+    fetchUserBookings();
+  }, []);
 
-  // Fetch user's products
-  useEffect(() => {
-    if (activeTab === 'products' && user) {
-      const fetchProducts = async () => {
-        try {
-          setProductsLoading(true);
-          const response = await getProducts({ owner: user._id });
-          setProducts(response.data);
-        } catch (err) {
-          toast.error('Failed to load your products');
-          console.error('Error fetching products:', err);
-        } finally {
-          setProductsLoading(false);
-        }
-      };
-
-      fetchProducts();
-    }
-  }, [activeTab, user]);
-
-  const onSubmit = async (data) => {
+  const fetchUserBookings = async () => {
     try {
-      setLoading(true);
-      await updateUser(data);
-      setIsEditing(false);
-      toast.success('Profile updated successfully');
-      setLoading(false);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update profile');
+      setBookingsLoading(true);
+      const response = await getBookings({ limit: 10 });
+      if (response.success) {
+        setBookings(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await updateUser(formData);
+      if (response.success) {
+        updateUserContext(response.data);
+        setEditMode(false);
+        toast.success('Profile updated successfully!');
+      } else {
+        throw new Error(response.error || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(error.message || 'Failed to update profile');
+    } finally {
       setLoading(false);
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center min-h-screen" style={{ backgroundColor: darkMode ? '#583101' : '#FFEDD8' }}>
-        <LoadingSpinner size="large" />
-      </div>
-    );
-  }
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'confirmed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const tabs = [
+    { id: 'profile', name: 'Profile', icon: '👤' },
+    { id: 'bookings', name: 'My Bookings', icon: '📋' },
+    { id: 'settings', name: 'Settings', icon: '⚙️' },
+    { id: 'activity', name: 'Activity', icon: '📊' }
+  ];
 
   return (
-    <div 
-      className="min-h-screen transition-colors duration-300"
-      style={{
-        background: darkMode 
-          ? 'linear-gradient(135deg, #583101 0%, #603808 25%, #6F4518 50%, #8B5E34 75%, #A47148 100%)'
-          : 'linear-gradient(135deg, #FFEDD8 0%, #F3D5B5 25%, #E7BC91 50%, #D4A276 75%, #BC8A5F 100%)',
-        color: darkMode ? '#FFEDD8' : '#583101'
-      }}
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <motion.div
-          className="text-center mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div 
-            className="w-28 h-28 mx-auto mb-6 rounded-full flex items-center justify-center text-3xl font-bold shadow-2xl border-4"
-            style={{
-              background: darkMode 
-                ? 'linear-gradient(135deg, #A47148 0%, #BC8A5F 100%)' 
-                : 'linear-gradient(135deg, #8B5E34 0%, #6F4518 100%)',
-              color: '#FFEDD8',
-              borderColor: darkMode ? '#BC8A5F' : '#D4A276'
-            }}
-          >
-            {user.name?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
-          <h1 className="text-4xl font-bold mb-3" style={{ color: darkMode ? '#FFEDD8' : '#583101' }}>
-            {user.name || 'User'}
-          </h1>
-          <p 
-            className="text-xl font-medium"
-            style={{ color: darkMode ? '#F3D5B5' : '#8B5E34' }}
-          >
-            {user.isAdmin ? '👑 Administrator' : '✨ Customer'}
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-primary-50'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">My Account</h1>
+          <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Manage your profile, bookings, and account settings
           </p>
-        </motion.div>
+        </div>
 
-        {/* Tab Navigation */}
-        <motion.div
-          className="flex justify-center mb-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div 
-            className="flex rounded-2xl p-2 shadow-xl border-2"
-            style={{
-              backgroundColor: darkMode ? '#6F4518' : '#F3D5B5',
-              borderColor: darkMode ? '#8B5E34' : '#D4A276'
-            }}
-          >
-            {[
-              { id: 'profile', label: 'Profile', icon: '👤' },
-              { id: 'products', label: 'My Products', icon: '📦' },
-              { id: 'security', label: 'Security', icon: '🔒' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className="px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105"
-                style={{
-                  backgroundColor: activeTab === tab.id
-                    ? darkMode ? '#A47148' : '#8B5E34'
-                    : 'transparent',
-                  color: activeTab === tab.id
-                    ? '#FFEDD8'
-                    : darkMode ? '#F3D5B5' : '#6F4518',
-                  boxShadow: activeTab === tab.id ? '0 8px 25px rgba(0,0,0,0.3)' : 'none'
-                }}
-              >
-                <span className="mr-3 text-lg">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        <AnimatePresence mode="wait">
-          {activeTab === 'profile' && (
-            <motion.div
-              key="profile"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2"
-              style={{
-                backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
-                borderColor: darkMode ? '#A47148' : '#BC8A5F'
-              }}
-            >
-              {/* Profile Section */}
-              <motion.div
-                className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2"
-                style={{
-                  backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
-                  borderColor: darkMode ? '#A47148' : '#BC8A5F'
-                }}
-                variants={itemVariants}
-              >
-                <div className="px-10 py-10">
-                  <div className="flex justify-between items-center mb-10">
-                    <h2 
-                      className="text-3xl font-bold flex items-center"
-                      style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                    >
-                      <span className="mr-4 text-2xl">📋</span>
-                      Personal Information
-                    </h2>
-                    {!isEditing && (
-                      <motion.button
-                        onClick={() => setIsEditing(true)}
-                        className="px-8 py-3 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                        style={{
-                          backgroundColor: darkMode ? '#A47148' : '#8B5E34',
-                          color: '#FFEDD8',
-                          borderColor: darkMode ? '#BC8A5F' : '#6F4518'
-                        }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        ✏️ Edit Profile
-                      </motion.button>
-                    )}
-                  </div>
-
-                  <AnimatePresence mode="wait">
-                    {isEditing ? (
-                      <motion.form
-                        key="editing"
-                        onSubmit={handleSubmit(onSubmit)}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-                          <motion.div variants={itemVariants}>
-                            <label 
-                              htmlFor="name" 
-                              className="block text-sm font-bold mb-3 flex items-center"
-                              style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                            >
-                              <span className="mr-2">👤</span>
-                              Full Name
-                            </label>
-                            <input
-                              id="name"
-                              type="text"
-                              className="w-full px-5 py-4 rounded-xl border-3 transition-all duration-300 focus:outline-none focus:ring-4 text-lg font-medium"
-                              style={{
-                                borderColor: errors.name
-                                  ? '#DC2626'
-                                  : darkMode ? '#8B5E34' : '#BC8A5F',
-                                backgroundColor: darkMode ? '#603808' : '#FFEDD8',
-                                color: darkMode ? '#FFEDD8' : '#583101',
-                                boxShadow: errors.name 
-                                  ? '0 0 0 4px rgba(220, 38, 38, 0.2)'
-                                  : `0 0 0 4px ${darkMode ? 'rgba(164, 113, 72, 0.3)' : 'rgba(188, 138, 95, 0.3)'}`
-                              }}
-                              placeholder="Enter your full name"
-                              {...register('name', { 
-                                required: 'Name is required',
-                                minLength: {
-                                  value: 2,
-                                  message: 'Name must be at least 2 characters'
-                                }
-                              })}
-                            />
-                            {errors.name && (
-                              <motion.p 
-                                className="text-red-600 text-sm mt-2 flex items-center font-semibold"
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                              >
-                                ⚠️ {errors.name.message}
-                              </motion.p>
-                            )}
-                          </motion.div>
-                          
-                          <motion.div variants={itemVariants}>
-                            <label 
-                              htmlFor="email" 
-                              className="block text-sm font-bold mb-3 flex items-center"
-                              style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                            >
-                              <span className="mr-2">📧</span>
-                              Email Address
-                            </label>
-                            <input
-                              id="email"
-                              type="email"
-                              className="w-full px-5 py-4 rounded-xl border-3 transition-all duration-300 cursor-not-allowed text-lg font-medium"
-                              style={{
-                                borderColor: darkMode ? '#8B5E34' : '#A47148',
-                                backgroundColor: darkMode ? '#583101' : '#E7BC91',
-                                color: darkMode ? '#D4A276' : '#6F4518'
-                              }}
-                              disabled
-                              {...register('email')}
-                            />
-                            <p 
-                              className="text-sm mt-2 flex items-center"
-                              style={{ color: darkMode ? '#D4A276' : '#8B5E34' }}
-                            >
-                              <span className="mr-1">🔒</span>
-                              Email cannot be changed for security reasons
-                            </p>
-                          </motion.div>
-                          
-                          <motion.div variants={itemVariants}>
-                            <label 
-                              htmlFor="phone" 
-                              className="block text-sm font-bold mb-3 flex items-center"
-                              style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                            >
-                              <span className="mr-2">📞</span>
-                              Phone Number
-                            </label>
-                            <input
-                              id="phone"
-                              type="tel"
-                              className="w-full px-5 py-4 rounded-xl border-3 transition-all duration-300 focus:outline-none focus:ring-4 text-lg font-medium"
-                              style={{
-                                borderColor: errors.phone
-                                  ? '#DC2626'
-                                  : darkMode ? '#8B5E34' : '#BC8A5F',
-                                backgroundColor: darkMode ? '#603808' : '#FFEDD8',
-                                color: darkMode ? '#FFEDD8' : '#583101',
-                                boxShadow: errors.phone 
-                                  ? '0 0 0 4px rgba(220, 38, 38, 0.2)'
-                                  : `0 0 0 4px ${darkMode ? 'rgba(164, 113, 72, 0.3)' : 'rgba(188, 138, 95, 0.3)'}`
-                              }}
-                              placeholder="Enter your phone number"
-                              {...register('phone', {
-                                pattern: {
-                                  value: /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/,
-                                  message: 'Invalid phone number format'
-                                }
-                              })}
-                            />
-                            {errors.phone && (
-                              <motion.p 
-                                className="text-red-600 text-sm mt-2 flex items-center font-semibold"
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                              >
-                                ⚠️ {errors.phone.message}
-                              </motion.p>
-                            )}
-                          </motion.div>
-                          
-                          <motion.div variants={itemVariants}>
-                            <label 
-                              htmlFor="address" 
-                              className="block text-sm font-bold mb-3 flex items-center"
-                              style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                            >
-                              <span className="mr-2">🏠</span>
-                              Address
-                            </label>
-                            <input
-                              id="address"
-                              type="text"
-                              className="w-full px-5 py-4 rounded-xl border-3 transition-all duration-300 focus:outline-none focus:ring-4 text-lg font-medium"
-                              style={{
-                                borderColor: darkMode ? '#8B5E34' : '#BC8A5F',
-                                backgroundColor: darkMode ? '#603808' : '#FFEDD8',
-                                color: darkMode ? '#FFEDD8' : '#583101',
-                                boxShadow: `0 0 0 4px ${darkMode ? 'rgba(164, 113, 72, 0.3)' : 'rgba(188, 138, 95, 0.3)'}`
-                              }}
-                              placeholder="Enter your address"
-                              {...register('address')}
-                            />
-                          </motion.div>
-                        </div>
-                        
-                        <div className="flex justify-end space-x-6">
-                          <motion.button
-                            type="button"
-                            onClick={() => {
-                              setIsEditing(false);
-                              reset();
-                            }}
-                            className="px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                            style={{
-                              backgroundColor: darkMode ? '#8B5E34' : '#D4A276',
-                              color: darkMode ? '#F3D5B5' : '#583101',
-                              borderColor: darkMode ? '#A47148' : '#BC8A5F'
-                            }}
-                            disabled={loading}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            ❌ Cancel
-                          </motion.button>
-                          <motion.button
-                            type="submit"
-                            className="px-10 py-4 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                              backgroundColor: darkMode ? '#BC8A5F' : '#6F4518',
-                              color: '#FFEDD8',
-                              borderColor: darkMode ? '#D4A276' : '#8B5E34'
-                            }}
-                            disabled={loading}
-                            whileHover={{ scale: loading ? 1 : 1.05 }}
-                            whileTap={{ scale: loading ? 1 : 0.95 }}
-                          >
-                            {loading ? (
-                              <>
-                                <LoadingSpinner size="small" />
-                                <span className="ml-3">Saving...</span>
-                              </>
-                            ) : (
-                              <>💾 Save Changes</>
-                            )}
-                          </motion.button>
-                        </div>
-                      </motion.form>
-                    ) : (
-                      <motion.div
-                        key="viewing"
-                        className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {[
-                          { icon: '👤', label: 'Full Name', value: user.name },
-                          { icon: '📧', label: 'Email Address', value: user.email },
-                          { icon: '📞', label: 'Phone Number', value: user.phone || 'Not provided' },
-                          { icon: '🏠', label: 'Address', value: user.address || 'Not provided' },
-                          { icon: '📅', label: 'Member Since', value: new Date(user.createdAt).toLocaleDateString() },
-                          { icon: '👑', label: 'Account Type', value: user.isAdmin ? 'Administrator' : 'Customer' }
-                        ].map((item, index) => (
-                          <motion.div
-                            key={item.label}
-                            className="p-8 rounded-2xl transition-all duration-300 shadow-lg border-2 transform hover:scale-105"
-                            style={{
-                              backgroundColor: darkMode ? 'rgba(139, 94, 52, 0.6)' : 'rgba(231, 188, 145, 0.7)',
-                              borderColor: darkMode ? '#A47148' : '#BC8A5F'
-                            }}
-                            variants={itemVariants}
-                            whileHover={{ scale: 1.05 }}
-                          >
-                            <h3 
-                              className="text-sm font-bold mb-3 flex items-center"
-                              style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                            >
-                              <span className="mr-2 text-lg">{item.icon}</span>
-                              {item.label}
-                            </h3>
-                            <p 
-                              className="text-xl font-semibold"
-                              style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                            >
-                              {item.value}
-                            </p>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 sticky top-4`}>
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-accent-100 dark:bg-accent-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">{user?.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {activeTab === 'products' && (
-            <motion.div
-              key="products"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-              className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2 p-8"
-              style={{
-                backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
-                borderColor: darkMode ? '#A47148' : '#BC8A5F'
-              }}
-            >
-              <div className="flex justify-between items-center mb-8">
-                <h2 
-                  className="text-3xl font-bold flex items-center"
-                  style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                >
-                  <span className="mr-4 text-2xl">📦</span>
-                  My Products
-                </h2>
-                <Link
-                  to="/products/new"
-                  className="px-8 py-3 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105 flex items-center"
-                  style={{
-                    backgroundColor: darkMode ? '#A47148' : '#8B5E34',
-                    color: '#FFEDD8',
-                    borderColor: darkMode ? '#BC8A5F' : '#6F4518'
-                  }}
-                >
-                  <span className="mr-2">➕</span>
-                  Add New Product
-                </Link>
+                <h3 className="font-semibold">{user?.name}</h3>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user?.email}</p>
               </div>
 
-              {productsLoading ? (
-                <div className="flex justify-center items-center py-20">
-                  <LoadingSpinner size="large" />
-                </div>
-              ) : products.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {products.map((product) => (
-                    <ProductCard key={product._id} product={product} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20">
-                  <p 
-                    className="text-xl mb-6"
-                    style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
+              <nav className="space-y-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      activeTab === tab.id
+                        ? 'bg-accent-100 dark:bg-accent-900 text-accent-700 dark:text-accent-300'
+                        : `${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`
+                    }`}
                   >
-                    You haven't listed any products yet.
-                  </p>
-                  <Link
-                    to="/products/new"
-                    className="inline-flex items-center px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                    style={{
-                      backgroundColor: darkMode ? '#A47148' : '#8B5E34',
-                      color: '#FFEDD8',
-                      borderColor: darkMode ? '#BC8A5F' : '#6F4518'
-                    }}
-                  >
-                    <span className="mr-2">➕</span>
-                    List Your First Product
-                  </Link>
-                </div>
-              )}
-            </motion.div>
-          )}
+                    <div className="flex items-center">
+                      <span className="mr-3">{tab.icon}</span>
+                      <span className="font-medium">{tab.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
 
-          {activeTab === 'security' && (
-            <motion.div
-              key="security"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
-            >
-              {/* Security Section */}
-              <motion.div
-                className="rounded-3xl shadow-2xl overflow-hidden backdrop-blur-lg border-2"
-                style={{
-                  backgroundColor: darkMode ? 'rgba(111, 69, 24, 0.9)' : 'rgba(255, 237, 216, 0.95)',
-                  borderColor: darkMode ? '#A47148' : '#BC8A5F'
-                }}
-                variants={itemVariants}
-              >
-                <div className="px-10 py-10">
-                  <h2 
-                    className="text-3xl font-bold mb-10 flex items-center"
-                    style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            {/* Profile Tab */}
+            {activeTab === 'profile' && (
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-8`}>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Profile Information</h2>
+                  <button
+                    onClick={() => setEditMode(!editMode)}
+                    className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                   >
-                    <span className="mr-4 text-2xl">🔒</span>
-                    Security Settings
-                  </h2>
-                  
-                  <div className="space-y-8">
-                    <motion.div
-                      className="p-8 rounded-2xl border-2 transition-all duration-300 shadow-lg transform hover:scale-102"
-                      style={{
-                        backgroundColor: darkMode ? 'rgba(139, 94, 52, 0.6)' : 'rgba(231, 188, 145, 0.7)',
-                        borderColor: darkMode ? '#BC8A5F' : '#D4A276'
-                      }}
-                      variants={itemVariants}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 
-                            className="text-xl font-bold mb-3 flex items-center"
-                            style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                          >
-                            <span className="mr-3">🔐</span>
-                            Password Security
-                          </h3>
-                          <p 
-                            className="text-base mb-4 leading-relaxed"
-                            style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                          >
-                            Keep your account secure with a strong password. We recommend using at least 8 characters with a mix of letters, numbers, and symbols.
-                          </p>
-                          <div className="flex items-center space-x-3">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: '#22C55E' }}
-                            ></div>
-                            <span 
-                              className="text-sm font-medium"
-                              style={{ color: darkMode ? '#D4A276' : '#8B5E34' }}
-                            >
-                              Password last updated 30 days ago
-                            </span>
-                          </div>
-                        </div>
-                        <motion.button
-                          className="ml-6 px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                          style={{
-                            backgroundColor: darkMode ? '#A47148' : '#8B5E34',
-                            color: '#FFEDD8',
-                            borderColor: darkMode ? '#BC8A5F' : '#6F4518'
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Change Password
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                    
-                    <motion.div
-                      className="p-8 rounded-2xl border-2 transition-all duration-300 shadow-lg transform hover:scale-102"
-                      style={{
-                        backgroundColor: darkMode ? 'rgba(139, 94, 52, 0.6)' : 'rgba(231, 188, 145, 0.7)',
-                        borderColor: darkMode ? '#BC8A5F' : '#D4A276'
-                      }}
-                      variants={itemVariants}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 
-                            className="text-xl font-bold mb-3 flex items-center"
-                            style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                          >
-                            <span className="mr-3">🛡️</span>
-                            Two-Factor Authentication
-                          </h3>
-                          <p 
-                            className="text-base mb-4 leading-relaxed"
-                            style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                          >
-                            Add an extra layer of protection to your account. Enable 2FA using your phone or authenticator app for enhanced security.
-                          </p>
-                          <div className="flex items-center space-x-3">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: '#EF4444' }}
-                            ></div>
-                            <span 
-                              className="text-sm font-medium"
-                              style={{ color: darkMode ? '#D4A276' : '#8B5E34' }}
-                            >
-                              2FA is currently disabled
-                            </span>
-                          </div>
-                        </div>
-                        <motion.button
-                          className="ml-6 px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                          style={{
-                            backgroundColor: darkMode ? '#D4A276' : '#A47148',
-                            color: darkMode ? '#583101' : '#FFEDD8',
-                            borderColor: darkMode ? '#E7BC91' : '#8B5E34'
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Enable 2FA
-                        </motion.button>
-                      </div>
-                    </motion.div>
+                    {editMode ? 'Cancel' : 'Edit Profile'}
+                  </button>
+                </div>
 
-                    <motion.div
-                      className="p-8 rounded-2xl border-2 transition-all duration-300 shadow-lg transform hover:scale-102"
-                      style={{
-                        backgroundColor: darkMode ? 'rgba(139, 94, 52, 0.6)' : 'rgba(231, 188, 145, 0.7)',
-                        borderColor: darkMode ? '#BC8A5F' : '#D4A276'
-                      }}
-                      variants={itemVariants}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 
-                            className="text-xl font-bold mb-3 flex items-center"
-                            style={{ color: darkMode ? '#FFEDD8' : '#583101' }}
-                          >
-                            <span className="mr-3">📱</span>
-                            Active Sessions
-                          </h3>
-                          <p 
-                            className="text-base mb-4 leading-relaxed"
-                            style={{ color: darkMode ? '#F3D5B5' : '#6F4518' }}
-                          >
-                            Monitor and manage your login sessions across all devices and locations. Log out from devices you don't recognize.
-                          </p>
-                          <div className="flex items-center space-x-3">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: '#3B82F6' }}
-                            ></div>
-                            <span 
-                              className="text-sm font-medium"
-                              style={{ color: darkMode ? '#D4A276' : '#8B5E34' }}
-                            >
-                              3 active sessions detected
-                            </span>
-                          </div>
-                        </div>
-                        <motion.button
-                          className="ml-6 px-8 py-4 rounded-xl font-semibold transition-all duration-300 shadow-xl border-2 transform hover:scale-105"
-                          style={{
-                            backgroundColor: darkMode ? '#BC8A5F' : '#6F4518',
-                            color: '#FFEDD8',
-                            borderColor: darkMode ? '#D4A276' : '#8B5E34'
-                          }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Manage Sessions
-                        </motion.button>
+                <form onSubmit={handleSubmit}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 disabled:opacity-50"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 disabled:opacity-50"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Phone</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Address</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        disabled={!editMode}
+                        className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  {editMode && (
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <>
+                            <LoadingSpinner size="small" />
+                            <span className="ml-2">Updating...</span>
+                          </>
+                        ) : 'Save Changes'}
+                      </button>
+                    </div>
+                  )}
+                </form>
+
+                {/* Account Stats */}
+                <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold mb-4">Account Statistics</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
+                      <div className="text-2xl font-bold text-accent-600">{bookings.length}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Total Bookings</div>
+                    </div>
+                    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
+                      <div className="text-2xl font-bold text-green-600">
+                        {bookings.filter(b => b.status === 'completed').length}
                       </div>
-                    </motion.div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
+                    </div>
+                    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {bookings.filter(b => b.status === 'confirmed').length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Active</div>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+            )}
+
+            {/* Bookings Tab */}
+            {activeTab === 'bookings' && (
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-8`}>
+                <h2 className="text-2xl font-bold mb-6">My Bookings</h2>
+                
+                {bookingsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <LoadingSpinner size="large" />
+                  </div>
+                ) : bookings.length > 0 ? (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <div
+                        key={booking._id}
+                        className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-6`}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">{booking.productId?.name || 'Product'}</h3>
+                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                            {booking.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Price:</span>
+                            <div className="font-semibold">${booking.totalPrice}</div>
+                          </div>
+                          <div>
+                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Payment Status:</span>
+                            <div className="font-semibold">{booking.paymentStatus}</div>
+                          </div>
+                          <div>
+                            <span className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Booked On:</span>
+                            <div className="font-semibold">{new Date(booking.createdAt).toLocaleDateString()}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-4">📋</div>
+                    <h3 className="text-lg font-semibold mb-2">No Bookings Yet</h3>
+                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+                      Start exploring our products and make your first booking!
+                    </p>
+                    <a
+                      href="/products"
+                      className="inline-flex items-center px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
+                    >
+                      Browse Products
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-8`}>
+                <h2 className="text-2xl font-bold mb-6">Account Settings</h2>
+                
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Notifications</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-3" defaultChecked />
+                        <span>Email notifications for booking updates</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-3" defaultChecked />
+                        <span>Promotional emails and offers</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-3" />
+                        <span>SMS notifications</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Privacy</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-3" defaultChecked />
+                        <span>Show my profile to other users</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-3" />
+                        <span>Allow product recommendations</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Security</h3>
+                    <button className="px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors">
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Activity Tab */}
+            {activeTab === 'activity' && (
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-8`}>
+                <h2 className="text-2xl font-bold mb-6">Recent Activity</h2>
+                
+                <div className="space-y-4">
+                  {bookings.slice(0, 5).map((booking, index) => (
+                    <div
+                      key={booking._id}
+                      className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg p-4`}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-3 h-3 bg-accent-600 rounded-full mr-4"></div>
+                        <div className="flex-1">
+                          <p className="font-medium">Booked {booking.productId?.name || 'a product'}</p>
+                          <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {new Date(booking.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                          {booking.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {bookings.length === 0 && (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-4">📊</div>
+                      <h3 className="text-lg font-semibold mb-2">No Activity Yet</h3>
+                      <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Your activity will appear here once you start using the platform.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
-const Profile = () => (
-  <ErrorBoundary>
-    <ProfileComponent />
-  </ErrorBoundary>
-);
 
 export default Profile;

@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { Menu, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bars3Icon, 
   XMarkIcon, 
-  SunIcon, 
-  MoonIcon,
   UserCircleIcon,
   ChevronDownIcon,
   ShoppingBagIcon,
@@ -19,7 +16,6 @@ import {
 
 const Header = () => {
   const { user, isAuthenticated, isAdmin, logout, loading } = useAuth();
-  const { darkMode, toggleDarkMode } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
@@ -80,11 +76,7 @@ const Header = () => {
     <motion.header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? darkMode
-            ? 'bg-[#583101]/95 backdrop-blur-md shadow-2xl border-b border-[#8b5e34]/30'
-            : 'bg-white/95 backdrop-blur-md shadow-2xl border-b border-[#d4a276]/30'
-          : darkMode
-          ? 'bg-[#603808]/90 backdrop-blur-sm'
+          ? 'bg-white/95 backdrop-blur-md shadow-2xl border-b border-[#d4a276]/30'
           : 'bg-white/90 backdrop-blur-sm'
       }`}
       initial={{ y: -100 }}
@@ -101,16 +93,10 @@ const Header = () => {
           >
             <Link 
               to="/" 
-              className={`text-2xl font-bold transition-colors duration-200 ${
-                darkMode 
-                  ? 'text-[#ffedd8] hover:text-[#f3d5b5]' 
-                  : 'text-[#583101] hover:text-[#6f4518]'
-              }`}
+              className={`text-2xl font-bold transition-colors duration-200 text-[#583101] hover:text-[#6f4518]`}
             >
               <span className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  darkMode ? 'bg-[#bc8a5f]' : 'bg-[#8b5e34]'
-                }`}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#8b5e34]">
                   <span className="text-[#ffedd8] font-bold text-sm">R</span>
                 </div>
                 RentalHub
@@ -129,11 +115,7 @@ const Header = () => {
                     to={item.href}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
                       location.pathname === item.href
-                        ? darkMode
-                          ? 'bg-[#bc8a5f] text-[#ffedd8] shadow-lg'
-                          : 'bg-[#8b5e34] text-[#ffedd8] shadow-lg'
-                        : darkMode
-                        ? 'text-[#e7bc91] hover:text-[#ffedd8] hover:bg-[#8b5e34]/30'
+                        ? 'bg-[#8b5e34] text-[#ffedd8] shadow-lg'
                         : 'text-[#6f4518] hover:text-[#583101] hover:bg-[#f3d5b5]/50'
                     }`}
                   >
@@ -147,43 +129,6 @@ const Header = () => {
 
           {/* Desktop User Actions */}
           <div className="hidden lg:flex items-center space-x-4">
-            
-            {/* Theme Toggle */}
-            <motion.button
-              onClick={toggleDarkMode}
-              className={`p-2.5 rounded-lg transition-all duration-200 ${
-                darkMode
-                  ? 'bg-[#8b5e34]/30 text-[#f3d5b5] hover:bg-[#8b5e34]/50 hover:text-[#ffedd8]'
-                  : 'bg-[#f3d5b5]/50 text-[#8b5e34] hover:bg-[#e7bc91]/50 hover:text-[#6f4518]'
-              }`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              aria-label="Toggle dark mode"
-            >
-              <AnimatePresence mode="wait">
-                {darkMode ? (
-                  <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <SunIcon className="w-5 h-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <MoonIcon className="w-5 h-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
 
             {/* Authentication Section */}
             <AnimatePresence mode="wait">
@@ -205,11 +150,7 @@ const Header = () => {
                 >
                   {/* User Menu */}
                   <Menu as="div" className="relative">
-                    <Menu.Button className={`flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ${
-                      darkMode
-                        ? 'bg-[#8b5e34]/30 text-[#ffedd8] hover:bg-[#8b5e34]/50 border border-[#bc8a5f]/30'
-                        : 'bg-[#f3d5b5]/50 text-[#583101] hover:bg-[#e7bc91]/50 border border-[#d4a276]/30'
-                    }`}>
+                    <Menu.Button className="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 bg-[#f3d5b5]/50 text-[#583101] hover:bg-[#e7bc91]/50 border border-[#d4a276]/30">
                       <UserCircleIcon className="w-5 h-5" />
                       <span className="hidden md:block">{user?.name || 'Account'}</span>
                       <ChevronDownIcon className="w-4 h-4" />
@@ -223,24 +164,14 @@ const Header = () => {
                       leaveFrom="transform scale-100 opacity-100"
                       leaveTo="transform scale-95 opacity-0"
                     >
-                      <Menu.Items className={`absolute right-0 mt-3 w-56 rounded-xl shadow-2xl py-2 z-50 border backdrop-blur-md ${
-                        darkMode
-                          ? 'bg-[#603808]/95 border-[#8b5e34]/50'
-                          : 'bg-white/95 border-[#d4a276]/30'
-                      }`}>
+                      <Menu.Items className="absolute right-0 mt-3 w-56 rounded-xl shadow-2xl py-2 z-50 border backdrop-blur-md bg-white/95 border-[#d4a276]/30">
                         
                         {/* User Info Header */}
-                        <div className={`px-4 py-3 border-b ${
-                          darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
-                        }`}>
-                          <p className={`text-sm font-medium ${
-                            darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
-                          }`}>
+                        <div className="px-4 py-3 border-b border-[#d4a276]/30">
+                          <p className="text-sm font-medium text-[#583101]">
                             {user?.name}
                           </p>
-                          <p className={`text-xs ${
-                            darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
-                          }`}>
+                          <p className="text-xs text-[#8b5e34]">
                             {user?.email}
                           </p>
                         </div>
@@ -253,11 +184,7 @@ const Header = () => {
                                 to={item.href}
                                 className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
                                   active
-                                    ? darkMode
-                                      ? 'bg-[#8b5e34]/30 text-[#ffedd8]'
-                                      : 'bg-[#f3d5b5]/50 text-[#583101]'
-                                    : darkMode
-                                    ? 'text-[#e7bc91] hover:text-[#ffedd8]'
+                                    ? 'bg-[#f3d5b5]/50 text-[#583101]'
                                     : 'text-[#6f4518] hover:text-[#583101]'
                                 }`}
                               >
@@ -276,11 +203,7 @@ const Header = () => {
                                 to={adminMenuItem.href}
                                 className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
                                   active
-                                    ? darkMode
-                                      ? 'bg-[#8b5e34]/30 text-[#ffedd8]'
-                                      : 'bg-[#f3d5b5]/50 text-[#583101]'
-                                    : darkMode
-                                    ? 'text-[#e7bc91] hover:text-[#ffedd8]'
+                                    ? 'bg-[#f3d5b5]/50 text-[#583101]'
                                     : 'text-[#6f4518] hover:text-[#583101]'
                                 }`}
                               >
@@ -292,18 +215,14 @@ const Header = () => {
                         )}
                         
                         {/* Logout */}
-                        <div className={`border-t mt-2 pt-2 ${
-                          darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
-                        }`}>
+                        <div className="border-t mt-2 pt-2 border-[#d4a276]/30">
                           <Menu.Item>
                             {({ active }) => (
                               <button
                                 onClick={handleLogout}
                                 className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium transition-colors ${
                                   active
-                                    ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-                                    : darkMode
-                                    ? 'text-[#e7bc91] hover:text-red-400'
+                                    ? 'bg-red-50 text-red-700'
                                     : 'text-[#6f4518] hover:text-red-600'
                                 }`}
                               >
@@ -327,21 +246,13 @@ const Header = () => {
                 >
                   <Link
                     to="/login"
-                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                      darkMode
-                        ? 'text-[#e7bc91] hover:text-[#ffedd8] hover:bg-[#8b5e34]/30'
-                        : 'text-[#6f4518] hover:text-[#583101] hover:bg-[#f3d5b5]/50'
-                    }`}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-[#6f4518] hover:text-[#583101] hover:bg-[#f3d5b5]/50`}
                   >
                     Sign In
                   </Link>
                   <Link
                     to="/signup"
-                    className={`px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${
-                      darkMode
-                        ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8]'
-                        : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]'
-                    }`}
+                    className="px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]">
                   >
                     Get Started
                   </Link>
@@ -352,11 +263,7 @@ const Header = () => {
 
           {/* Mobile Menu Button */}
           <motion.button
-            className={`lg:hidden p-2 rounded-lg transition-colors ${
-              darkMode
-                ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
-                : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
-            }`}
+            className="lg:hidden p-2 rounded-lg transition-colors text-[#6f4518] hover:bg-[#f3d5b5]/50"
             onClick={toggleMobileMenu}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -395,9 +302,7 @@ const Header = () => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className={`lg:hidden border-t overflow-hidden ${
-                darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
-              }`}
+              className="lg:hidden border-t overflow-hidden border-[#d4a276]/30">
             >
               <div className="py-4 space-y-2">
                 
@@ -417,11 +322,7 @@ const Header = () => {
                         onClick={closeMobileMenu}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
                           location.pathname === item.href
-                            ? darkMode
-                              ? 'bg-[#bc8a5f] text-[#ffedd8]'
-                              : 'bg-[#8b5e34] text-[#ffedd8]'
-                            : darkMode
-                            ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
+                            ? 'bg-[#8b5e34] text-[#ffedd8]'
                             : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
                         }`}
                       >
@@ -433,9 +334,7 @@ const Header = () => {
                 })}
 
                 {/* Authentication Section */}
-                <div className={`border-t pt-4 mt-4 ${
-                  darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
-                }`}>
+                <div className="border-t pt-4 mt-4 border-[#d4a276]/30">
                   <AnimatePresence mode="wait">
                     {isAuthenticated ? (
                       <motion.div
@@ -447,14 +346,10 @@ const Header = () => {
                       >
                         {/* User Info */}
                         <div className="px-4 py-2">
-                          <p className={`text-sm font-medium ${
-                            darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
-                          }`}>
+                          <p className="text-sm font-medium text-[#583101]">
                             {user?.name}
                           </p>
-                          <p className={`text-xs ${
-                            darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
-                          }`}>
+                          <p className="text-xs text-[#8b5e34]">
                             {user?.email}
                           </p>
                         </div>
@@ -470,11 +365,7 @@ const Header = () => {
                             <Link
                               to={item.href}
                               onClick={closeMobileMenu}
-                              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                                darkMode
-                                  ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
-                                  : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
-                              }`}
+                              className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-[#6f4518] hover:bg-[#f3d5b5]/50">
                             >
                               <item.icon className="w-5 h-5" />
                               {item.label}
@@ -492,11 +383,7 @@ const Header = () => {
                             <Link
                               to={adminMenuItem.href}
                               onClick={closeMobileMenu}
-                              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                                darkMode
-                                  ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
-                                  : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
-                              }`}
+                              className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 text-[#6f4518] hover:bg-[#f3d5b5]/50">
                             >
                               <adminMenuItem.icon className="w-5 h-5" />
                               {adminMenuItem.label}
@@ -510,11 +397,7 @@ const Header = () => {
                             handleLogout();
                             closeMobileMenu();
                           }}
-                          className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                            darkMode
-                              ? 'text-[#e7bc91] hover:bg-red-900/20 hover:text-red-400'
-                              : 'text-[#6f4518] hover:bg-red-50 hover:text-red-600'
-                          }`}
+                          className="flex items-center gap-3 w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 text-[#6f4518] hover:bg-red-50 hover:text-red-600">
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.6, duration: 0.3 }}
@@ -534,22 +417,14 @@ const Header = () => {
                         <Link
                           to="/login"
                           onClick={closeMobileMenu}
-                          className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                            darkMode
-                              ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
-                              : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
-                          }`}
+                          className="block px-4 py-3 rounded-lg font-medium transition-all duration-200 text-[#6f4518] hover:bg-[#f3d5b5]/50">
                         >
                           Sign In
                         </Link>
                         <Link
                           to="/signup"
                           onClick={closeMobileMenu}
-                          className={`block px-4 py-3 rounded-lg font-semibold text-center transition-all duration-200 ${
-                            darkMode
-                              ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8]'
-                              : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]'
-                          }`}
+                          className="block px-4 py-3 rounded-lg font-semibold text-center transition-all duration-200 bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]">
                         >
                           Get Started
                         </Link>
@@ -558,25 +433,7 @@ const Header = () => {
                   </AnimatePresence>
                 </div>
 
-                {/* Theme Toggle Mobile */}
-                <div className={`border-t pt-4 mt-4 ${
-                  darkMode ? 'border-[#8b5e34]/30' : 'border-[#d4a276]/30'
-                }`}>
-                  <button
-                    onClick={() => {
-                      toggleDarkMode();
-                      closeMobileMenu();
-                    }}
-                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                      darkMode
-                        ? 'text-[#e7bc91] hover:bg-[#8b5e34]/30'
-                        : 'text-[#6f4518] hover:bg-[#f3d5b5]/50'
-                    }`}
-                  >
-                    {darkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-                    {darkMode ? 'Light Mode' : 'Dark Mode'}
-                  </button>
-                </div>
+                {/* Remove theme toggle from mobile menu completely */}
               </div>
             </motion.div>
           )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import DatePicker from 'react-datepicker';
@@ -24,6 +24,10 @@ const ProductDetail = () => {
   const [isAvailable, setIsAvailable] = useState(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [bookingLoading, setBookingLoading] = useState(false);
+
+  // Default placeholder image
+  const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDYwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI2MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMDAgMTUwSDQwMFYyNTBIMjAwVjE1MFoiIGZpbGw9IiNEMUQ1REIiLz4KPHN2ZyB4PSIyNzUiIHk9IjE3NSIgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xOSAzSDVDMy44OSAzIDMgMy44OSAzIDVWMTlDMyAyMC4xMSAzLjg5IDIxIDUgMjFIMTlDMjAuMTEgMjEgMjEgMjAuMTEgMjEgMTlWNUMyMSAzLjg5IDIwLjExIDMgMTkgM1pNMTkgNUg1VjE5SDE5VjVaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0xNCAxMUMxNC45MyAxMSAxNS42NyAxMC4yNiAxNS42NyA5LjMzQzE1LjY3IDguNCAxNC45MyA3LjY3IDE0IDcuNjdDMTMuMDcgNy42NyAxMi4zMyA4LjQgMTIuMzMgOS4zM0MxMi4zMyAxMC4yNiAxMy4wNyAxMSAxNCAxMVoiIGZpbGw9IiM5QjlCQTAiLz4KPHBhdGggZD0iTTE0IDEzQzExLjI0IDEzIDkgMTUuMjQgOSAxOEgxOUMxOSAxNS4yNCAxNi43NiAxMyAxNCAxM1oiIGZpbGw9IiM5QjlCQTAiLz4KPC9zdmc+Cjx0ZXh0IHg9IjMwMCIgeT0iMzIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM2QjZGNzEiPk5vIEltYWdlIEF2YWlsYWJsZTwvdGV4dD4KPC9zdmc+';
 
   // Fetch product details
   useEffect(() => {
@@ -31,125 +35,108 @@ const ProductDetail = () => {
       try {
         setLoading(true);
         const response = await getProductById(id);
-        
         if (response.success) {
           setProduct(response.data);
         } else {
           setError(response.error || 'Failed to load product details');
         }
-        setLoading(false);
       } catch (err) {
         setError('Failed to load product details');
-        setLoading(false);
         console.error('Error fetching product:', err);
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchProduct();
   }, [id]);
 
-  // Calculate total price when dates or product changes
-  useEffect(() => {
-    if (product && startDate && endDate) {
-      const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-      if (days <= 0) {
-        setTotalPrice(0);
-        return;
-      }
+  // Memoized price calculation
+  const calculateTotalPrice = useMemo(() => {
+    if (!product || !startDate || !endDate) return 0;
+    
+    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return 0;
+
+    let finalPrice = (product.basePrice || (product.pricingRules?.[0]?.price) || 0) * days;
+
+    // Apply pricing rules
+    if (product.pricingRules?.length) {
+      const matchingRule = product.pricingRules.find(rule => 
+        rule.durationType === 'day' || 
+        (rule.durationType === 'week' && days >= 7) || 
+        (rule.durationType === 'month' && days >= 30)
+      );
       
-      // Get the base price from either basePrice or first pricing rule
-      const basePrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
-      let finalPrice = basePrice * days;
-
-      // Check if there are pricing rules
-      if (product.pricingRules && product.pricingRules.length > 0) {
-        const matchingRule = product.pricingRules.find(rule => 
-          rule.durationType === 'day' || 
-          (rule.durationType === 'week' && days >= 7) || 
-          (rule.durationType === 'month' && days >= 30)
-        );
-        
-        if (matchingRule && matchingRule.price) {
-          if (matchingRule.durationType === 'day') {
-            finalPrice = matchingRule.price * days;
-          } else if (matchingRule.durationType === 'week') {
-            finalPrice = matchingRule.price * Math.ceil(days / 7);
-          } else if (matchingRule.durationType === 'month') {
-            finalPrice = matchingRule.price * Math.ceil(days / 30);
-          }
+      if (matchingRule?.price) {
+        if (matchingRule.durationType === 'day') {
+          finalPrice = matchingRule.price * days;
+        } else if (matchingRule.durationType === 'week') {
+          finalPrice = matchingRule.price * Math.ceil(days / 7);
+        } else if (matchingRule.durationType === 'month') {
+          finalPrice = matchingRule.price * Math.ceil(days / 30);
         }
       }
-
-      // Apply seasonal pricing if applicable
-      if (product.seasonalPricing && product.seasonalPricing.length > 0) {
-        const applicableSeason = product.seasonalPricing.find(season => {
-          const seasonStart = new Date(season.startDate);
-          const seasonEnd = new Date(season.endDate);
-          return startDate >= seasonStart && endDate <= seasonEnd;
-        });
-
-        if (applicableSeason) {
-          finalPrice = applicableSeason.price * days;
-        }
-      }
-
-      // Apply discounts if applicable
-      if (product.discounts && product.discounts.length > 0) {
-        const applicableDiscount = product.discounts.find(discount => {
-          const discountStart = discount.startDate ? new Date(discount.startDate) : null;
-          const discountEnd = discount.endDate ? new Date(discount.endDate) : null;
-          const meetsDateCriteria = (!discountStart || startDate >= discountStart) && 
-                                  (!discountEnd || endDate <= discountEnd);
-          const meetsDurationCriteria = !discount.minimumDuration || days >= discount.minimumDuration;
-          return meetsDateCriteria && meetsDurationCriteria;
-        });
-
-        if (applicableDiscount) {
-          if (applicableDiscount.type === 'percentage') {
-            finalPrice = finalPrice * (1 - applicableDiscount.value / 100);
-          } else if (applicableDiscount.type === 'fixed') {
-            finalPrice = finalPrice - applicableDiscount.value;
-          }
-        }
-      }
-
-      setTotalPrice(Math.max(0, finalPrice)); // Ensure price is never negative
     }
+
+    // Apply seasonal pricing
+    if (product.seasonalPricing?.length) {
+      const applicableSeason = product.seasonalPricing.find(season => {
+        const seasonStart = new Date(season.startDate);
+        const seasonEnd = new Date(season.endDate);
+        return startDate >= seasonStart && endDate <= seasonEnd;
+      });
+      if (applicableSeason) {
+        finalPrice = applicableSeason.price * days;
+      }
+    }
+
+    // Apply discounts
+    if (product.discounts?.length) {
+      const applicableDiscount = product.discounts.find(discount => {
+        const discountStart = discount.startDate ? new Date(discount.startDate) : null;
+        const discountEnd = discount.endDate ? new Date(discount.endDate) : null;
+        return (
+          (!discountStart || startDate >= discountStart) &&
+          (!discountEnd || endDate <= discountEnd) &&
+          (!discount.minimumDuration || days >= discount.minimumDuration)
+        );
+      });
+      
+      if (applicableDiscount) {
+        finalPrice = applicableDiscount.type === 'percentage'
+          ? finalPrice * (1 - applicableDiscount.value / 100)
+          : finalPrice - applicableDiscount.value;
+      }
+    }
+
+    return Math.max(0, finalPrice);
   }, [product, startDate, endDate]);
 
+  useEffect(() => {
+    setTotalPrice(calculateTotalPrice);
+  }, [calculateTotalPrice]);
+
   const handleCheckAvailability = async () => {
-    // Reset availability state
     setIsAvailable(null);
-    
     if (!startDate || !endDate) {
       toast.error('Please select start and end dates');
       return;
     }
 
-    // Ensure dates are valid
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const selectedStartDate = new Date(startDate);
-    selectedStartDate.setHours(0, 0, 0, 0);
-    
-    const selectedEndDate = new Date(endDate);
-    selectedEndDate.setHours(0, 0, 0, 0);
+    const selectedStartDate = new Date(startDate).setHours(0, 0, 0, 0);
+    const selectedEndDate = new Date(endDate).setHours(0, 0, 0, 0);
 
     if (selectedStartDate < today) {
       toast.error('Start date cannot be in the past');
       return;
     }
-
     if (selectedStartDate >= selectedEndDate) {
       toast.error('End date must be after start date');
       return;
     }
-
-    const diffTime = Math.abs(selectedEndDate - selectedStartDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays > 90) {  // Assuming max rental period is 90 days
+    if (Math.ceil((selectedEndDate - selectedStartDate) / (1000 * 60 * 60 * 24)) > 90) {
       toast.error('Maximum rental period is 90 days');
       return;
     }
@@ -157,27 +144,20 @@ const ProductDetail = () => {
     try {
       setCheckingAvailability(true);
       const response = await checkProductAvailability(id, {
-        startDate: selectedStartDate.toISOString(),
-        endDate: selectedEndDate.toISOString()
+        startDate: new Date(selectedStartDate).toISOString(),
+        endDate: new Date(selectedEndDate).toISOString()
       });
       
-      if (response.success) {
-        const isAvail = response.data?.isAvailable || false;
-        setIsAvailable(isAvail);
-        
-        if (isAvail) {
-          toast.success('Product is available for selected dates!');
-        } else {
-          toast.error('Product is not available for selected dates');
-        }
-      } else {
-        toast.error(response.error || 'Failed to check availability');
-        setIsAvailable(false);
-      }
+      setIsAvailable(response.success && response.data?.isAvailable);
+      toast[response.success && response.data?.isAvailable ? 'success' : 'error'](
+        response.success && response.data?.isAvailable 
+          ? 'Product is available for selected dates!' 
+          : response.error || 'Product is not available for selected dates'
+      );
     } catch (err) {
       console.error('Error checking availability:', err);
-      toast.error('Failed to check availability. Please try again.');
       setIsAvailable(false);
+      toast.error('Failed to check availability. Please try again.');
     } finally {
       setCheckingAvailability(false);
     }
@@ -189,53 +169,46 @@ const ProductDetail = () => {
       navigate('/login', { state: { from: `/products/${id}` } });
       return;
     }
-
     if (isAvailable === null) {
       toast.warning('Please check availability before booking');
       return;
     }
-
     if (!isAvailable) {
       toast.error('Product is not available for selected dates');
       return;
     }
-
     if (totalPrice <= 0) {
       toast.error('Invalid price calculation. Please try again.');
       return;
     }
 
     try {
-      const bookingData = {
+      setBookingLoading(true);
+      const response = await createBooking({
         productId: id,
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
         totalPrice: parseFloat(totalPrice.toFixed(2))
-      };
-
-      const response = await createBooking(bookingData);
+      });
       
       if (response.success) {
         toast.success('Booking created successfully!');
-        navigate(`/my-bookings/${response.data._id}`);
+        navigate(`/my-bookings`);
       } else {
-        toast.error(response.error || 'Failed to create booking. Please try again.');
+        throw new Error(response.error || 'Failed to create booking');
       }
     } catch (err) {
       console.error('Error creating booking:', err);
-      if (err.response?.status === 400) {
-        toast.error(err.response.data.message || 'Invalid booking request');
-      } else if (err.response?.status === 403) {
-        toast.error('You are not authorized to make this booking');
-      } else {
-        toast.error('Failed to create booking. Please try again later.');
-      }
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to create booking. Please try again later.';
+      toast.error(errorMessage);
+    } finally {
+      setBookingLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-primary-50 dark:bg-gray-900">
         <LoadingSpinner size="large" />
       </div>
     );
@@ -243,11 +216,14 @@ const ProductDetail = () => {
 
   if (error || !product) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Error</h2>
-          <p className="text-red-500 mb-6">{error || 'Product not found'}</p>
-          <Link to="/products" className="btn-primary">
+      <div className="flex items-center justify-center min-h-screen bg-primary-50 dark:bg-gray-900">
+        <div className="text-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold mb-4 text-text-900 dark:text-text-50">Error</h2>
+          <p className="text-error-600 mb-6">{error || 'Product not found'}</p>
+          <Link to="/products" className="inline-flex items-center px-4 py-2 bg-accent-600 hover:bg-accent-700 text-text-50 rounded-lg transition-colors">
+            <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
             Back to Products
           </Link>
         </div>
@@ -256,126 +232,129 @@ const ProductDetail = () => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-text-50' : 'bg-primary-50 text-text-900'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-6">
-          <Link to="/products" className="text-primary-600 hover:text-primary-700 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Back to Products
-          </Link>
-        </div>
+        <Link to="/products" className="inline-flex items-center mb-6 text-accent-600 hover:text-accent-700">
+          <svg className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          Back to Products
+        </Link>
 
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-10 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg overflow-hidden`}>
-          {/* Product Image */}
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg overflow-hidden`}>
           <motion.div 
-            className="h-96 lg:h-auto overflow-hidden"
+            className="h-80 lg:h-full overflow-hidden"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
             <img 
-              src={product.imageUrl || 'https://via.placeholder.com/600x400?text=No+Image+Available'} 
+              src={product.imageUrl || placeholderImage} 
               alt={product.name} 
               className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                e.target.src = placeholderImage;
+              }}
             />
           </motion.div>
 
-          {/* Product Details */}
           <motion.div 
-            className="p-6 lg:p-8"
+            className="p-6"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start mb-4">
               <div>
                 <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-                {product.pricingRules && product.pricingRules.length > 0 && (
-                  <div className="text- text-brown-600 dark:text-brown-500">
+                {product.pricingRules?.length > 0 && (
+                  <div className="text-accent-600 dark:text-accent-500">
                     {product.pricingRules.map((rule, index) => (
                       <p key={index}>
-                        ${rule.price} / {rule.durationType} 
+                        ${rule.price} / {rule.durationType}
                         {rule.minimumDuration > 1 ? ` (min ${rule.minimumDuration} ${rule.durationType}s)` : ''}
                       </p>
                     ))}
                   </div>
                 )}
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${product.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                product.status === 'approved' 
+                  ? 'bg-success-100 text-success-800' 
+                  : 'bg-error-100 text-error-800'
+              }`}>
                 {product.status === 'approved' ? 'Available' : 'Unavailable'}
               </span>
             </div>
 
-            <div className="mt-6">
+            <div className="mb-6">
               <h2 className="text-xl font-semibold mb-2">Description</h2>
-              <p className="mb-6">{product.description}</p>
+              <p className="text-text-700 dark:text-text-300">{product.description}</p>
               
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <h3 className="text-sm font-medium">Category</h3>
+                  <h3 className="text-sm font-medium text-text-600 dark:text-text-400">Category</h3>
                   <p>{product.category}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium">Condition</h3>
+                  <h3 className="text-sm font-medium text-text-600 dark:text-text-400">Condition</h3>
                   <p>{product.condition}</p>
                 </div>
                 {product.brand && (
                   <div>
-                    <h3 className="text-sm font-medium">Brand</h3>
+                    <h3 className="text-sm font-medium text-text-600 dark:text-text-400">Brand</h3>
                     <p>{product.brand}</p>
                   </div>
                 )}
                 {product.model && (
                   <div>
-                    <h3 className="text-sm font-medium">Model</h3>
+                    <h3 className="text-sm font-medium text-text-600 dark:text-text-400">Model</h3>
                     <p>{product.model}</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Booking Section */}
-            <div className={`mt-8 p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+            <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-secondary-50'}`}>
               <h2 className="text-xl font-semibold mb-4">Book This Product</h2>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Start Date</label>
+                  <label className="block text-sm font-medium mb-1 text-text-600 dark:text-text-400">Start Date</label>
                   <DatePicker
                     selected={startDate}
-                    onChange={date => setStartDate(date)}
+                    onChange={setStartDate}
                     selectsStart
                     startDate={startDate}
                     endDate={endDate}
                     minDate={new Date()}
-                    className="input w-full"
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-600 dark:text-text-50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">End Date</label>
+                  <label className="block text-sm font-medium mb-1 text-text-600 dark:text-text-400">End Date</label>
                   <DatePicker
                     selected={endDate}
-                    onChange={date => setEndDate(date)}
+                    onChange={setEndDate}
                     selectsEnd
                     startDate={startDate}
                     endDate={endDate}
                     minDate={startDate}
-                    className="input w-full"
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-600 dark:text-text-50"
                   />
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-medium">Total Price</p>
-                  <p className="text-2xl font-bold">${totalPrice.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-text-600 dark:text-text-400">Total Price</p>
+                  <p className="text-2xl font-bold text-text-900 dark:text-text-50">${totalPrice.toFixed(2)}</p>
                 </div>
                 <button 
                   onClick={handleCheckAvailability}
                   disabled={checkingAvailability}
-                  className="btn-secondary"
+                  className="inline-flex items-center px-4 py-2 bg-accent-600 hover:bg-accent-700 text-text-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {checkingAvailability ? (
                     <>
@@ -385,23 +364,28 @@ const ProductDetail = () => {
                   ) : 'Check Availability'}
                 </button>
               </div>
-              
+
               <button 
                 onClick={handleBookNow}
-                disabled={!isAvailable || checkingAvailability}
-                className={`w-full btn-primary ${(!isAvailable && isAvailable !== null) || checkingAvailability ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!isAvailable || checkingAvailability || bookingLoading}
+                className="w-full px-4 py-2 bg-accent-600 hover:bg-accent-700 text-text-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Book Now
+                {bookingLoading ? (
+                  <>
+                    <LoadingSpinner size="small" />
+                    <span className="ml-2">Creating Booking...</span>
+                  </>
+                ) : 'Book Now'}
               </button>
-              
+
               {!isAuthenticated && (
-                <p className="text-sm mt-2 text-center">You need to <Link to="/login" className="text-primary-600 hover:underline">log in</Link> to book this product</p>
+                <p className="text-sm mt-2 text-center text-text-600 dark:text-text-400">
+                  You need to <Link to="/login" className="text-accent-600 hover:underline">log in</Link> to book this product
+                </p>
               )}
             </div>
           </motion.div>
         </div>
-
-        {/* Related Products would go here */}
       </div>
     </div>
   );

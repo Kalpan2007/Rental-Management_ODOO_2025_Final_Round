@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
+      
       if (token && storedUser) {
         try {
           const userData = await getCurrentUser();
@@ -44,15 +45,23 @@ export const AuthProvider = ({ children }) => {
   const handleLogin = async (credentials) => {
     try {
       setLoading(true);
-      const { token, user } = await login(credentials);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
       setError(null);
-      return user;
+      
+      const response = await login(credentials);
+      
+      if (response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setUser(response.user);
+        toast.success('Login successful!');
+        return response.user;
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-      toast.error(err.response?.data?.message || 'Login failed');
+      const errorMessage = err.response?.data?.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -62,15 +71,23 @@ export const AuthProvider = ({ children }) => {
   const handleSignup = async (userData) => {
     try {
       setLoading(true);
-      const { token, user } = await signup(userData);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
       setError(null);
-      return user;
+      
+      const response = await signup(userData);
+      
+      if (response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setUser(response.user);
+        toast.success('Registration successful!');
+        return response.user;
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
-      toast.error(err.response?.data?.message || 'Signup failed');
+      const errorMessage = err.response?.data?.message || 'Registration failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -80,6 +97,7 @@ export const AuthProvider = ({ children }) => {
   const handleLogout = () => {
     logout();
     setUser(null);
+    setError(null);
     toast.success('Logged out successfully');
   };
 

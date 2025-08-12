@@ -12,6 +12,14 @@ import Signup from '../pages/Signup';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 
+// New Public Pages
+import About from '../pages/About';
+import Contact from '../pages/Contact';
+import FAQ from '../pages/system/FAQ';
+import HelpCenter from '../pages/system/HelpCenter';
+import TermsOfService from '../pages/system/Legal/TermsOfService';
+import PrivacyPolicy from '../pages/system/Legal/PrivacyPolicy';
+
 // Protected Pages
 import Profile from '../pages/Profile';
 import MyBookings from '../pages/MyBookings';
@@ -38,6 +46,14 @@ const AppRoutes = () => {
       <Route path="/signup" element={<Signup />} />
       <Route path="/register" element={<Signup />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
+      
+      {/* New Public Pages */}
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/help" element={<HelpCenter />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>

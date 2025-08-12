@@ -1,260 +1,195 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { FaUserShield, FaDatabase, FaLock, FaShareAlt, FaCookie, FaUserCog } from 'react-icons/fa';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 const PrivacyPolicy = () => {
-  const sections = [
-    {
-      id: 1,
-      title: 'Information We Collect',
-      icon: FaDatabase,
-      content: 'We collect various types of information to provide and improve our services:',
-      items: [
-        {
-          subtitle: 'Personal Information',
-          details: [
-            'Name and contact information',
-            'Government-issued ID for verification',
-            'Payment information',
-            'Email address and phone number'
-          ]
-        },
-        {
-          subtitle: 'Usage Information',
-          details: [
-            'Browsing history on our platform',
-            'Rental history and preferences',
-            'Device information and IP address',
-            'Location data (with your consent)'
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: 'How We Use Your Information',
-      icon: FaUserCog,
-      content: 'Your information helps us provide and personalize our services:',
-      items: [
-        {
-          subtitle: 'Service Provision',
-          details: [
-            'Process rental transactions',
-            'Verify identity and prevent fraud',
-            'Provide customer support',
-            'Send important notifications'
-          ]
-        },
-        {
-          subtitle: 'Service Improvement',
-          details: [
-            'Analyze usage patterns',
-            'Enhance user experience',
-            'Develop new features',
-            'Conduct market research'
-          ]
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Information Sharing',
-      icon: FaShareAlt,
-      content: 'We share information only in specific circumstances:',
-      items: [
-        {
-          subtitle: 'Third-Party Service Providers',
-          details: [
-            'Payment processors',
-            'Identity verification services',
-            'Cloud storage providers',
-            'Analytics services'
-          ]
-        },
-        {
-          subtitle: 'Legal Requirements',
-          details: [
-            'Court orders and legal processes',
-            'Government requests',
-            'Protection of rights and safety',
-            'Prevention of fraud or illegal activities'
-          ]
-        }
-      ]
-    },
-    {
-      id: 4,
-      title: 'Data Security',
-      icon: FaLock,
-      content: 'We implement robust security measures to protect your information:',
-      items: [
-        {
-          subtitle: 'Technical Measures',
-          details: [
-            'Encryption in transit and at rest',
-            'Secure data centers',
-            'Regular security audits',
-            'Access control and monitoring'
-          ]
-        },
-        {
-          subtitle: 'Organizational Measures',
-          details: [
-            'Employee training and policies',
-            'Data access restrictions',
-            'Incident response plans',
-            'Regular security reviews'
-          ]
-        }
-      ]
-    }
-  ];
+  const { darkMode } = useTheme();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-primary-50'}`}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <FaUserShield className="mx-auto h-16 w-16 text-purple-500 mb-4" />
-          <h1 className="text-4xl font-bold text-white mb-4">Privacy Policy</h1>
-          <p className="text-xl text-slate-300">
-            Your privacy is important to us. This policy explains how we handle your information.
+          <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
+          <p className={`text-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Last updated: December 2023
           </p>
         </div>
 
-        {/* Last Updated */}
-        <div className="bg-slate-800/50 rounded-lg p-4 mb-8 text-center">
-          <p className="text-slate-300">
-            Last Updated: {new Date().toLocaleDateString()}
-          </p>
-        </div>
+        {/* Content */}
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-8`}>
+          <div className="prose prose-lg max-w-none">
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">1. Introduction</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                At RentalHub, we respect your privacy and are committed to protecting your personal data. 
+                This privacy policy explains how we collect, use, and safeguard your information when you 
+                use our rental platform.
+              </p>
+            </section>
 
-        {/* Main Content */}
-        <div className="space-y-8">
-          {sections.map((section) => (
-            <div
-              key={section.id}
-              className="bg-slate-800 rounded-xl p-6 shadow-lg hover:bg-slate-700/80 transition-colors duration-300"
-            >
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <section.icon className="h-8 w-8 text-purple-500" />
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">2. Information We Collect</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Personal Information</h3>
+                  <ul className={`list-disc pl-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <li>Name and contact information (email, phone number)</li>
+                    <li>Address and location information</li>
+                    <li>Payment information (processed securely by our payment partners)</li>
+                    <li>Government-issued identification for verification</li>
+                    <li>Profile information and preferences</li>
+                  </ul>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-2xl font-semibold text-white mb-4">
-                    {section.title}
-                  </h2>
-                  <p className="text-slate-300 mb-6">{section.content}</p>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {section.items.map((item, index) => (
-                      <div key={index} className="space-y-4">
-                        <h3 className="text-lg font-medium text-white">
-                          {item.subtitle}
-                        </h3>
-                        <ul className="space-y-2">
-                          {item.details.map((detail, detailIndex) => (
-                            <li
-                              key={detailIndex}
-                              className="flex items-center text-slate-300"
-                            >
-                              <span className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                              {detail}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Usage Information</h3>
+                  <ul className={`list-disc pl-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <li>Rental history and preferences</li>
+                    <li>Search queries and browsing behavior</li>
+                    <li>Device information and IP addresses</li>
+                    <li>Communication records with other users</li>
+                  </ul>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            </section>
 
-        {/* Your Rights Section */}
-        <div className="mt-12 bg-slate-800/50 rounded-xl p-8">
-          <h3 className="text-2xl font-semibold text-white mb-6">
-            Your Rights and Choices
-          </h3>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-white">Access and Control</h4>
-              <ul className="space-y-2 text-slate-300">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                  Request access to your personal data
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                  Update or correct your information
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                  Delete your account and data
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-3" />
-                  Opt-out of marketing communications
-                </li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-white">Contact Us</h4>
-              <p className="text-slate-300 mb-4">
-                For privacy-related inquiries or to exercise your rights, please contact our
-                Data Protection Officer:
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">3. How We Use Your Information</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We use your information to:
               </p>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="mailto:privacy@example.com"
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    privacy@example.com
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    to="/contact"
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    Contact Form
-                  </Link>
-                </li>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li>Provide and maintain our rental services</li>
+                <li>Process payments and manage transactions</li>
+                <li>Verify user identities and prevent fraud</li>
+                <li>Facilitate communication between renters and lenders</li>
+                <li>Send important updates and notifications</li>
+                <li>Improve our services and user experience</li>
+                <li>Comply with legal obligations</li>
               </ul>
-            </div>
-          </div>
-        </div>
+            </section>
 
-        {/* Related Policies */}
-        <div className="mt-12 bg-slate-800 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">
-            Related Policies
-          </h3>
-          <div className="flex flex-wrap gap-4">
-            <Link
-              to="/terms-of-service"
-              className="px-4 py-2 bg-slate-700 rounded-lg text-white hover:bg-slate-600 transition-colors"
-            >
-              Terms of Service
-            </Link>
-            <Link
-              to="/cookies-policy"
-              className="px-4 py-2 bg-slate-700 rounded-lg text-white hover:bg-slate-600 transition-colors"
-            >
-              Cookies Policy
-            </Link>
-          </div>
-        </div>
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">4. Information Sharing</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We do not sell, trade, or rent your personal information to third parties. We may share 
+                your information in the following circumstances:
+              </p>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li><strong>With other users:</strong> Basic profile information for rental transactions</li>
+                <li><strong>Service providers:</strong> Payment processors, hosting providers, and analytics services</li>
+                <li><strong>Legal requirements:</strong> When required by law or to protect our rights</li>
+                <li><strong>Business transfers:</strong> In case of merger, acquisition, or sale of assets</li>
+                <li><strong>With your consent:</strong> When you explicitly authorize us to share information</li>
+              </ul>
+            </section>
 
-        {/* Footer */}
-        <div className="mt-12 text-center border-t border-slate-700 pt-8">
-          <p className="text-slate-400 text-sm">
-            This privacy policy is effective as of {new Date().toLocaleDateString()} and will
-            remain in effect except with respect to any changes in its provisions in the
-            future, which will be in effect immediately after being posted on this page.
-          </p>
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">5. Data Security</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We implement appropriate security measures to protect your personal information:
+              </p>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li>Encryption of sensitive data in transit and at rest</li>
+                <li>Regular security audits and updates</li>
+                <li>Access controls and authentication measures</li>
+                <li>Secure payment processing through trusted partners</li>
+                <li>Employee training on data protection</li>
+              </ul>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">6. Data Retention</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We retain your personal information for as long as necessary to provide our services and 
+                comply with legal obligations. This typically includes:
+              </p>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li>Account information: Until you delete your account</li>
+                <li>Transaction records: 7 years for tax and legal purposes</li>
+                <li>Communication records: 2 years for service improvement</li>
+                <li>Analytics data: 3 years for business insights</li>
+              </ul>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">7. Your Rights</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                You have the following rights regarding your personal information:
+              </p>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li><strong>Access:</strong> Request a copy of your personal data</li>
+                <li><strong>Correction:</strong> Update or correct inaccurate information</li>
+                <li><strong>Deletion:</strong> Request deletion of your personal data</li>
+                <li><strong>Portability:</strong> Receive your data in a structured format</li>
+                <li><strong>Objection:</strong> Object to certain processing activities</li>
+                <li><strong>Withdrawal:</strong> Withdraw consent for data processing</li>
+              </ul>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">8. Cookies and Tracking</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We use cookies and similar technologies to:
+              </p>
+              <ul className={`list-disc pl-6 mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <li>Remember your preferences and settings</li>
+                <li>Analyze website usage and performance</li>
+                <li>Provide personalized content and recommendations</li>
+                <li>Ensure security and prevent fraud</li>
+              </ul>
+              <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                You can control cookie settings through your browser preferences.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">9. Third-Party Services</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Our platform may contain links to third-party websites and services. We are not responsible 
+                for the privacy practices of these external sites. We encourage you to review their privacy 
+                policies before providing any personal information.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">10. Children's Privacy</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Our services are not intended for children under 18 years of age. We do not knowingly 
+                collect personal information from children under 18. If you believe we have collected 
+                information from a child under 18, please contact us immediately.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">11. International Transfers</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Your information may be transferred to and processed in countries other than your own. 
+                We ensure that such transfers comply with applicable data protection laws and implement 
+                appropriate safeguards to protect your information.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">12. Changes to This Policy</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                We may update this privacy policy from time to time. We will notify you of any material 
+                changes by email or through our website. Your continued use of our services after such 
+                changes constitutes acceptance of the updated policy.
+              </p>
+            </section>
+
+            <section className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">13. Contact Us</h2>
+              <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                If you have any questions about this privacy policy or our data practices, please contact us:
+              </p>
+              <div className={`p-4 bg-gray-100 dark:bg-gray-700 rounded-lg ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                <p><strong>Email:</strong> privacy@rentalhub.com</p>
+                <p><strong>Phone:</strong> +1 (555) 123-4567</p>
+                <p><strong>Address:</strong> 123 Rental Street, Suite 456, New York, NY 10001</p>
+                <p><strong>Data Protection Officer:</strong> dpo@rentalhub.com</p>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

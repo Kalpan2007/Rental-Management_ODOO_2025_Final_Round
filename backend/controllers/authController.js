@@ -18,19 +18,54 @@ const loginSchema = Joi.object({
 });
 
 const signup = async (req, res) => {
-  const { name, email, password, role } = req.body;
-  let user = await User.findOne({ email });
-  if (user) return res.status(400).json({ message: 'User exists' });
+  try {
+    const { name, email, password, role = 'customer' } = req.body;
+    
+    // Check if user already exists
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
 
-  const otp = otpGenerator.generate(6, { digits: true, alphabets: false, upperCase: false, specialChars: false });
-  console.log(`🔥 Generated OTP for ${email}: ${otp}`); // Debug log
-  user = new User({ name, email, password: await bcrypt.hash(password, 10), role, otp, otpExpires: Date.now() + 10 * 60 * 1000 });
-  await user.save();
+    // Create user without OTP verification for simplicity
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = new User({ 
+      name, 
+      email, 
+      password: hashedPassword, 
+      role,
+      isVerified: true // Auto-verify for now
+    });
+    
+    await user.save();
 
-  await sendEmail(email, 'Verify OTP', `Your OTP is ${otp}`);
-  res.json({ message: 'OTP sent to email' });
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // Return user data without password
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt
+    };
+
+    res.status(201).json({ 
+      message: 'User registered successfully',
+      token,
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'Server error during signup' });
+  }
 };
-
 
 const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
@@ -43,23 +78,70 @@ const verifyOtp = async (req, res) => {
   user.otpExpires = undefined;
   await user.save();
 
-  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
   res.json({ token });
 };
 
 const login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user || !await bcrypt.compare(password, user.password)) {
-    return res.status(400).json({ message: 'Invalid credentials' });
+  try {
+    const { email, password } = req.body;
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
+    // Check if user is verified (optional for now)
+    if (!user.isVerified) {
+      return res.status(400).json({ message: 'Please verify your email first' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // Return user data without password
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt
+    };
+
+    res.json({ 
+      message: 'Login successful',
+      token,
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
-  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  res.json({ token });
 };
 
 const me = async (req, res) => {
-  const user = await User.findById(req.user.id).select('-password');
-  res.json(user);
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
 module.exports = { signup, verifyOtp, login, me, signupSchema, loginSchema };
