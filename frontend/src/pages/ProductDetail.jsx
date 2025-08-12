@@ -190,6 +190,11 @@ const ProductDetail = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('User information not available');
+      return;
+    }
+
     if (isAvailable === null) {
       toast.warning('Please check availability before booking');
       return;
@@ -200,24 +205,44 @@ const ProductDetail = () => {
       return;
     }
 
-    if (totalPrice <= 0) {
+    // Validate totalPrice
+    const calculatedTotalPrice = parseFloat(totalPrice.toFixed(2));
+    if (isNaN(calculatedTotalPrice) || calculatedTotalPrice <= 0) {
       toast.error('Invalid price calculation. Please try again.');
       return;
     }
 
     try {
+      // Validate dates
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+      if (startDateTime >= endDateTime) {
+        toast.error('End date must be after start date');
+        return;
+      }
+
+      // Format dates to match the expected format (start of day)
+      startDateTime.setHours(0, 0, 0, 0);
+      endDateTime.setHours(0, 0, 0, 0);
+
       const bookingData = {
         productId: id,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        totalPrice: parseFloat(totalPrice.toFixed(2))
+        startDate: startDateTime.toISOString(),
+        endDate: endDateTime.toISOString(),
+        totalPrice: calculatedTotalPrice,
+        endUser: {
+          firstName: user.name?.split(' ')[0] || '',
+          lastName: user.name?.split(' ')[1] || '',
+          email: user.email || '',
+          phone: user.phone || ''
+        }
       };
 
       const response = await createBooking(bookingData);
       
       if (response.success) {
         toast.success('Booking created successfully!');
-        navigate(`/my-bookings/${response.data._id}`);
+        navigate(`/bookings/${response.data._id}`);
       } else {
         toast.error(response.error || 'Failed to create booking. Please try again.');
       }

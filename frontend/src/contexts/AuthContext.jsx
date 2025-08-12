@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, login, signup, logout } from '../api/auth';
+import { getCurrentUser, login, signup, verifyOtp, logout } from '../api/auth';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
@@ -13,29 +13,59 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      if (token && storedUser) {
+      try {
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        // Clear localStorage if either token or user is missing
+        if (!token || !storedUser || storedUser === 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        
+        // Try to parse stored user data
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && typeof parsedUser === 'object') {
+            setUser(parsedUser);
+          } else {
+            // Invalid user data
+            localStorage.removeItem('user');
+          }
+        } catch (parseError) {
+          console.error('Failed to parse stored user data:', parseError);
+          localStorage.removeItem('user');
+        }
+        
+        // Try to get fresh data from server
         try {
           const userData = await getCurrentUser();
           if (userData) {
             setUser(userData);
-          } else {
-            // If getCurrentUser returns null, clear storage
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            localStorage.setItem('user', JSON.stringify(userData));
           }
         } catch (err) {
           console.error('Failed to fetch user data:', err);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          // Only clear auth on 401 Unauthorized
+          if (err.response && err.response.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
+          // For other errors, keep using the stored user data
         }
-      } else {
-        // If either token or user is missing, clear both
+      } catch (error) {
+        console.error('Error in authentication initialization:', error);
+        // Reset auth state on critical errors
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
@@ -62,15 +92,32 @@ export const AuthProvider = ({ children }) => {
   const handleSignup = async (userData) => {
     try {
       setLoading(true);
-      const { token, user } = await signup(userData);
+      const result = await signup(userData);
+      // Signup only sends OTP, doesn't return token and user yet
+      toast.success(result.message || 'OTP sent to your email');
+      return { email: userData.email, message: result.message };
+    } catch (err) {
+      setError(err.response?.data?.message || 'Signup failed');
+      toast.error(err.response?.data?.message || 'Signup failed');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleVerifyOtp = async (email, otp) => {
+    try {
+      setLoading(true);
+      const { token, user } = await verifyOtp(email, otp);
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
       setError(null);
+      toast.success('Account verified successfully');
       return user;
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
-      toast.error(err.response?.data?.message || 'Signup failed');
+      setError(err.response?.data?.message || 'OTP verification failed');
+      toast.error(err.response?.data?.message || 'OTP verification failed');
       throw err;
     } finally {
       setLoading(false);
@@ -89,6 +136,7 @@ export const AuthProvider = ({ children }) => {
     error,
     login: handleLogin,
     signup: handleSignup,
+    verifyOtp: handleVerifyOtp,
     logout: handleLogout,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
