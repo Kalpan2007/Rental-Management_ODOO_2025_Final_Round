@@ -104,11 +104,35 @@ export const createBooking = async (bookingData) => {
 };
 
 export const updateBookingStatus = async (id, status) => {
-  const response = await api.put(`/bookings/${id}/status`, { status });
-  return response.data;
+  try {
+    const response = await api.put(`/bookings/${id}/status`, { status });
+    return {
+      data: response.data?.booking || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    return {
+      data: {},
+      success: false,
+      error: error.response?.data?.message || 'Failed to update booking status'
+    };
+  }
 };
 
 export const cancelBooking = async (id) => {
-  const response = await api.put(`/bookings/${id}/cancel`);
-  return response.data;
+  try {
+    const response = await api.put(`/bookings/${id}/cancel`);
+    return {
+      data: response.data?.booking || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    return {
+      data: {},
+      success: false,
+      error: error.response?.data?.message || 'Failed to cancel booking'
+    };
+  }
 };

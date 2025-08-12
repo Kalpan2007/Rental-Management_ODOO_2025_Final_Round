@@ -3,11 +3,21 @@ import api from './axios';
 export const getProducts = async (params) => {
   try {
     const response = await api.get('/products', { params });
-    // Ensure we always return a consistent structure
-    return {
-      data: response.data?.products || response.data || [],
-      success: true
-    };
+    // Handle both old and new response formats
+    if (response.data?.success !== undefined) {
+      // New format with success field
+      return {
+        data: response.data?.data || [],
+        success: response.data?.success,
+        error: response.data?.error
+      };
+    } else {
+      // Old format for backward compatibility
+      return {
+        data: response.data?.products || response.data || [],
+        success: true
+      };
+    }
   } catch (error) {
     console.error('Error fetching products:', error);
     return {
@@ -21,10 +31,21 @@ export const getProducts = async (params) => {
 export const getProductById = async (id) => {
   try {
     const response = await api.get(`/products/${id}`);
-    return {
-      data: response.data?.product || response.data || {},
-      success: true
-    };
+    // Handle both old and new response formats
+    if (response.data?.success !== undefined) {
+      // New format with success field
+      return {
+        data: response.data?.data || {},
+        success: response.data?.success,
+        error: response.data?.error
+      };
+    } else {
+      // Old format for backward compatibility
+      return {
+        data: response.data?.product || response.data || {},
+        success: true
+      };
+    }
   } catch (error) {
     console.error('Error fetching product details:', error);
     return {

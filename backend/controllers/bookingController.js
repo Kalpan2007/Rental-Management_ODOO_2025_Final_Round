@@ -5,123 +5,163 @@ const { sendBookingConfirmation } = require('../services/notificationService');
 // Create booking
 const createBooking = async (req, res) => {
   try {
-    const { productId, startDate, endDate, totalPrice } = req.body;
+    console.log('Received booking request:', req.body);
     
-    // Validate required fields
-    if (!productId || !startDate || !endDate || !totalPrice) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: productId, startDate, endDate, totalPrice' 
-      });
+    const { productId, startDate, endDate, endUser, totalPrice } = req.body;
+    
+    // Validate all required fields
+    if (!productId) {
+      return res.status(400).json({ message: 'Product ID is required' });
+    }
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required' });
     }
 
-    // Check if product exists and is approved
+    // Validate endUser details
+    if (!endUser || !endUser.firstName || !endUser.lastName || !endUser.email) {
+      return res.status(400).json({ message: 'End user details (firstName, lastName, email) are required' });
+    }
+    
+    // Validate totalPrice is a valid number and greater than 0
+    if (!totalPrice || isNaN(totalPrice) || totalPrice <= 0) {
+      return res.status(400).json({ message: 'Invalid total price' });
+    }
+
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    if (product.status !== 'approved') {
-      return res.status(400).json({ message: 'Product is not available for booking' });
+    // Get the base price from the product
+    const basePrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
+    if (basePrice <= 0) {
+      return res.status(400).json({ message: 'Invalid base price for the product' });
     }
 
     // Validate dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const now = new Date();
+    const startDateTime = new Date(startDate);
+    const endDateTime = new Date(endDate);
+    
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
 
-    if (start < now) {
+    if (startDateTime >= endDateTime) {
+      return res.status(400).json({ message: 'End date must be after start date' });
+    }
+
+    if (startDateTime < new Date()) {
       return res.status(400).json({ message: 'Start date cannot be in the past' });
     }
 
-    if (end <= start) {
-      return res.status(400).json({ message: 'End date must be after start date' });
+    // Calculate unit price (daily rate)
+    const rentDays = Math.ceil((endDateTime - startDateTime) / (1000 * 60 * 60 * 24));
+    if (rentDays < 1) {
+      return res.status(400).json({ message: 'Minimum rental period is 1 day' });
     }
+    const unitPrice = totalPrice / rentDays;
 
     // Check availability (prevent double-booking)
     const overlapping = await Booking.find({
       productId,
-      status: { $nin: ['cancelled', 'completed'] },
+      status: { $nin: ['cancelled'] }, // Ignore cancelled bookings
       $or: [
-        { startDate: { $lte: end }, endDate: { $gte: start } },
+        { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
       ],
     });
-
+    
     if (overlapping.length > 0) {
-      return res.status(400).json({ message: 'Product is not available for the selected dates' });
+      return res.status(400).json({ message: 'Product not available for the selected dates' });
     }
 
-    // Calculate unit price from product
-    const unitPrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
+    // Check product availability periods
+    try {
+      const isAvailable = await product.isAvailableForRange(startDate, endDate);
+      if (!isAvailable) {
+        return res.status(400).json({ message: 'Product is not available for the selected dates due to maintenance or other restrictions' });
+      }
+    } catch (availabilityError) {
+      console.error('Error checking product availability:', availabilityError);
+      // Continue with booking creation if availability check fails
+    }
 
-    // Create booking
-    const booking = new Booking({
+    // Update product availability after successful booking
+    product.availability.push({
+      startDate: startDateTime,
+      endDate: endDateTime,
+      isAvailable: false,
+      reason: 'booked'
+    });
+    await product.save();
+
+    let newBooking = new Booking({
       customerId: req.user.id,
       productId,
-      startDate: start,
-      endDate: end,
-      unitPrice: unitPrice,
-      totalPrice: parseFloat(totalPrice),
-      status: 'pending',
-      paymentStatus: 'pending'
+      startDate: startDateTime,
+      endDate: endDateTime,
+      unitPrice,
+      totalPrice,
+      endUser,
+      status: 'pending'
     });
-
-    await booking.save();
-
-    // Populate product details for response
-    await booking.populate('productId');
-
-    // Send notification (optional)
+    
     try {
-      await sendBookingConfirmation(booking);
-    } catch (notificationError) {
-      console.error('Failed to send booking confirmation:', notificationError);
+      newBooking = await newBooking.save();
+      
+      // Only try to send confirmation if we have user email
+      if (req.user.email) {
+        try {
+          await sendBookingConfirmation(newBooking);
+        } catch (emailError) {
+          console.error('Failed to send booking confirmation email:', emailError);
+          // Don't fail the booking creation if email fails
+        }
+      }
+      
+      res.status(201).json({
+        success: true,
+        data: newBooking
+      });
+    } catch (saveError) {
+      console.error('Error saving booking:', saveError);
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to create booking', 
+        error: saveError.message 
+      });
     }
-
-    res.status(201).json({
-      message: 'Booking created successfully',
-      booking
-    });
   } catch (error) {
-    console.error('Create booking error:', error);
-    res.status(500).json({ message: 'Server error while creating booking' });
+    console.error('Error in booking creation process:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to process booking request', 
+      error: error.message 
+    });
   }
 };
 
 // List bookings
 const listBookings = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status } = req.query;
-    const query = {};
-
-    // Filter by user role
-    if (req.user.role === 'admin') {
-      // Admin can see all bookings
-      if (status) query.status = status;
-    } else {
-      // Regular users can only see their own bookings
-      query.customerId = req.user.id;
-      if (status) query.status = status;
-    }
-
+    const { page = 1, limit = 10 } = req.query;
+    const query = req.user.role === 'admin' ? {} : { customerId: req.user.id };
     const bookings = await Booking.find(query)
-      .populate('productId', 'name images basePrice')
-      .populate('customerId', 'name email')
-      .sort({ createdAt: -1 })
+      .populate('productId')
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .lean();
-
-    const total = await Booking.countDocuments(query);
-
     res.json({
-      bookings,
-      totalPages: Math.ceil(total / limit),
-      currentPage: parseInt(page),
-      total
+      success: true,
+      data: bookings
     });
   } catch (error) {
-    console.error('List bookings error:', error);
-    res.status(500).json({ message: 'Server error while fetching bookings' });
+    console.error('Error listing bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings',
+      error: error.message
+    });
   }
 };
 
@@ -129,22 +169,35 @@ const listBookings = async (req, res) => {
 const getBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('productId')
-      .populate('customerId', '-password');
+      .populate('productId customerId')
+      .lean();
 
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    // Authorization check
+    // Auth check if not admin and not owner
     if (req.user.role !== 'admin' && booking.customerId._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to view this booking' });
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized'
+      });
     }
 
-    res.json(booking);
+    res.json({
+      success: true,
+      data: booking
+    });
   } catch (error) {
-    console.error('Get booking error:', error);
-    res.status(500).json({ message: 'Server error while fetching booking' });
+    console.error('Error fetching booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch booking',
+      error: error.message
+    });
   }
 };
 
@@ -152,35 +205,53 @@ const getBooking = async (req, res) => {
 const cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-
+    
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    // Authorization check
-    if (req.user.role !== 'admin' && booking.customerId.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
     // Check if booking can be cancelled
     if (booking.status === 'cancelled') {
-      return res.status(400).json({ message: 'Booking is already cancelled' });
+      return res.status(400).json({
+        success: false,
+        message: 'Booking is already cancelled'
+      });
     }
 
     if (booking.status === 'completed') {
-      return res.status(400).json({ message: 'Cannot cancel completed booking' });
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a completed booking'
+      });
     }
 
-    booking.status = 'cancelled';
-    await booking.save();
+    if (new Date(booking.startDate) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a booking that has already started'
+      });
+    }
 
-    res.json({ 
-      message: 'Booking cancelled successfully',
-      booking 
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      data: updatedBooking
     });
   } catch (error) {
-    console.error('Cancel booking error:', error);
-    res.status(500).json({ message: 'Server error while cancelling booking' });
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel booking',
+      error: error.message
+    });
   }
 };
 
@@ -192,7 +263,17 @@ const confirmBooking = async (req, res) => {
       .populate('productId');
     
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot confirm booking with status: ${booking.status}`
+      });
     }
     
     if (booking.status === 'confirmed') {
@@ -216,17 +297,21 @@ const confirmBooking = async (req, res) => {
     // Send notification
     try {
       await sendBookingConfirmation(booking);
-    } catch (notificationError) {
-      console.error('Failed to send confirmation notification:', notificationError);
+    } catch (emailError) {
+      console.error('Failed to send booking confirmation email:', emailError);
     }
     
-    res.json({ 
-      message: 'Booking confirmed successfully',
-      booking 
+    res.json({
+      success: true,
+      data: booking
     });
   } catch (error) {
-    console.error('Confirm booking error:', error);
-    res.status(500).json({ message: 'Server error while confirming booking' });
+    console.error('Error confirming booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to confirm booking',
+      error: error.message
+    });
   }
 };
 
@@ -234,25 +319,45 @@ const confirmBooking = async (req, res) => {
 const completeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    
+
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
     }
 
-    if (booking.status === 'completed') {
-      return res.status(400).json({ message: 'Booking is already completed' });
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only confirmed bookings can be completed'
+      });
     }
 
-    booking.status = 'completed';
-    await booking.save();
-    
-    res.json({ 
-      message: 'Booking completed successfully',
-      booking 
+    if (new Date() < new Date(booking.endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot complete booking before end date'
+      });
+    }
+
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'completed' },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      data: updatedBooking
     });
   } catch (error) {
-    console.error('Complete booking error:', error);
-    res.status(500).json({ message: 'Server error while completing booking' });
+    console.error('Error completing booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to complete booking',
+      error: error.message
+    });
   }
 };
 

@@ -82,7 +82,8 @@ const listProducts = async (req, res) => {
       .lean();
     
     res.json({
-      products,
+      success: true,
+      data: products,
       total,
       page: Number(page),
       totalPages: Math.ceil(total / limit)

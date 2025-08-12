@@ -58,7 +58,7 @@ const AppRoutes = () => {
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/profile" element={<Profile />} />
-        <Route path="/my-bookings" element={<MyBookings />} />
+        <Route path="/bookings" element={<MyBookings />} />
         <Route path="/bookings/:id" element={<BookingDetail />} />
         <Route path="/products/new" element={<ProductForm />} />
         <Route path="/products/edit/:id" element={<ProductForm />} />

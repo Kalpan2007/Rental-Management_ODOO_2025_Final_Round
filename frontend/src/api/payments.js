@@ -1,24 +1,49 @@
 import api from './axios';
 
-export const createPaymentIntent = async (bookingId) => {
-  const response = await api.post('/payments/create-intent', { bookingId });
-  return response.data;
+export const createPayment = async (data) => {
+  try {
+    const response = await api.post('/payments/create', data);
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    console.error('Error creating payment:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to create payment'
+    };
+  }
 };
 
-export const createPayment = async ({ bookingId }) => {
-  const response = await api.post('/payments/create', { bookingId });
-  return response.data;
-};
-
-export const confirmPayment = async (paymentIntentId, bookingId) => {
-  const response = await api.post('/payments/confirm', {
-    paymentIntentId,
-    bookingId,
-  });
-  return response.data;
+export const verifyPayment = async (sessionId) => {
+  try {
+    const response = await api.post('/payments/verify', { sessionId });
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to verify payment'
+    };
+  }
 };
 
 export const getPaymentsByBookingId = async (bookingId) => {
-  const response = await api.get(`/payments/booking/${bookingId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/payments/history/${bookingId}`);
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Failed to fetch payment history'
+    };
+  }
 };

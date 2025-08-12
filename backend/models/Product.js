@@ -57,7 +57,7 @@ productSchema.index({ name: 'text' });
 productSchema.index({ owner: 1 }); // Added index for owner queries
 
 // Method to check if product is available for a date range
-productSchema.methods.isAvailableForRange = function(startDate, endDate, quantity = 1) {
+productSchema.methods.isAvailableForRange = async function(startDate, endDate, quantity = 1) {
   // Convert to Date objects if they're not already
   startDate = new Date(startDate);
   endDate = new Date(endDate);
@@ -76,10 +76,18 @@ productSchema.methods.isAvailableForRange = function(startDate, endDate, quantit
     );
   });
   
-  // Count active bookings for this period to check quantity
-  // This would need to be implemented with a Booking model query
-  // For now, just check if there are unavailable periods
-  return unavailablePeriods.length === 0 && this.quantity >= quantity;
+  // Check for overlapping bookings
+  const Booking = mongoose.model('Booking');
+  const overlappingBookings = await Booking.find({
+    productId: this._id,
+    status: { $nin: ['cancelled', 'completed'] },
+    $or: [
+      { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
+    ],
+  });
+  
+  // Product is available if no unavailable periods and no overlapping bookings
+  return unavailablePeriods.length === 0 && overlappingBookings.length === 0 && this.quantity >= quantity;
 };
 
 module.exports = mongoose.model('Product', productSchema);
