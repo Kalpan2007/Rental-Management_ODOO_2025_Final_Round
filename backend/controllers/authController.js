@@ -23,6 +23,7 @@ const signup = async (req, res) => {
   if (user) return res.status(400).json({ message: 'User exists' });
 
   const otp = otpGenerator.generate(6, { digits: true, alphabets: false, upperCase: false, specialChars: false });
+  console.log(`🔥 Generated OTP for ${email}: ${otp}`); // Debug log
   user = new User({ name, email, password: await bcrypt.hash(password, 10), role, otp, otpExpires: Date.now() + 10 * 60 * 1000 });
   await user.save();
 
