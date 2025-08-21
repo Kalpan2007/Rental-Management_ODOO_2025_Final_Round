@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,16 +8,15 @@ import {
   CreditCardIcon,
   CalendarDaysIcon,
   CurrencyRupeeIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const StripeCheckout = ({ product, onClose }) => {
   const { user } = useAuth();
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [customPrice, setCustomPrice] = useState(product?.basePrice || 100);
+  const [customPrice, setCustomPrice] = useState(product?.basePrice || product?.price || 100);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(
     new Date(Date.now() + 86400000).toISOString().split('T')[0]
@@ -90,14 +88,7 @@ const StripeCheckout = ({ product, onClose }) => {
       }
 
       // Redirect to Stripe Checkout
-      const stripe = await stripePromise;
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
+      window.location.href = data.url;
 
     } catch (error) {
       console.error('Checkout error:', error);
@@ -142,7 +133,7 @@ const StripeCheckout = ({ product, onClose }) => {
                   : 'hover:bg-[#f3d5b5] text-[#6f4518]'
               }`}
             >
-              ✕
+              <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
         </div>
@@ -151,7 +142,7 @@ const StripeCheckout = ({ product, onClose }) => {
           {/* Product Info */}
           <div className="flex items-center space-x-4 mb-8">
             <img 
-              src={product?.images?.[0] || 'https://via.placeholder.com/80'} 
+              src={product?.images?.[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=80&h=80&fit=crop'} 
               alt={product?.name}
               className="w-20 h-20 object-cover rounded-xl"
             />
@@ -169,7 +160,7 @@ const StripeCheckout = ({ product, onClose }) => {
               <p className={`text-sm ${
                 darkMode ? 'text-[#d4a276]' : 'text-[#6f4518]'
               }`}>
-                Suggested: ₹{product?.basePrice || 100}/day
+                Suggested: ₹{product?.basePrice || product?.price || 100}/day
               </p>
             </div>
           </div>

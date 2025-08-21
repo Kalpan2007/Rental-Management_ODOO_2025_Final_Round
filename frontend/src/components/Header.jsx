@@ -65,6 +65,10 @@ const Header = () => {
   // Navigation items
   const navigationItems = [
     { label: 'Browse Products', href: '/products', icon: ShoppingBagIcon },
+    { label: 'Marketplace', href: '/marketplace', icon: ShoppingBagIcon },
+    { label: 'Trending', href: '/trending', icon: FireIcon },
+    { label: 'Deals', href: '/deals', icon: TagIcon },
+    { label: 'Community', href: '/community', icon: UserGroupIcon },
     { label: 'List Product', href: '/products/new', icon: PlusCircleIcon, authRequired: true },
   ];
 

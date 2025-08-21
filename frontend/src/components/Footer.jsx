@@ -30,8 +30,28 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/marketplace" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Marketplace
+                </Link>
+              </li>
+              <li>
+                <Link to="/trending" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Trending
+                </Link>
+              </li>
+              <li>
+                <Link to="/deals" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Deals
+                </Link>
+              </li>
+              <li>
                 <Link to="/about" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
                   About Us
+                </Link>
+              </li>
+              <li>
+                <Link to="/business" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Business Solutions
                 </Link>
               </li>
               <li>
@@ -45,6 +65,16 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Customer Support</h3>
             <ul className="space-y-2">
+              <li>
+                <Link to="/community" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Community
+                </Link>
+              </li>
+              <li>
+                <Link to="/events" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
+                  Events
+                </Link>
+              </li>
               <li>
                 <Link to="/faq" className="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
                   FAQ

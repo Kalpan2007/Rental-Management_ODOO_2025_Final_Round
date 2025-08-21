@@ -18,6 +18,13 @@ import Dashboard from '../pages/Dashboard';
 import PaymentSuccess from '../pages/PaymentSuccess';
 import PaymentCancel from '../pages/PaymentCancel';
 import Categories from '../pages/Categories';
+import Marketplace from '../pages/Marketplace';
+import Trending from '../pages/Trending';
+import Explore from '../pages/Explore';
+import Community from '../pages/Community';
+import Deals from '../pages/Deals';
+import Events from '../pages/Events';
+import BusinessSolutions from '../pages/BusinessSolutions';
 
 // Help & Support Pages
 import FAQ from '../pages/system/FAQ';
@@ -90,6 +97,13 @@ const AppRoutes = () => {
       <Route path="/contact" element={<Contact />} />
       <Route path="/contact-us" element={<ContactUs />} />
       <Route path="/categories" element={<Categories />} />
+      <Route path="/marketplace" element={<Marketplace />} />
+      <Route path="/trending" element={<Trending />} />
+      <Route path="/explore" element={<Explore />} />
+      <Route path="/community" element={<Community />} />
+      <Route path="/deals" element={<Deals />} />
+      <Route path="/events" element={<Events />} />
+      <Route path="/business" element={<BusinessSolutions />} />
       <Route path="/products" element={<Products />} />
       <Route path="/products/:id" element={<ProductDetail />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />

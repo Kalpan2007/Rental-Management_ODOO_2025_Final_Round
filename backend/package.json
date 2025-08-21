@@ -4,7 +4,7 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "node app.js",
+    "dev": "nodemon app.js",
     "seed": "node seeds/seed.js"
   },
   "dependencies": {
@@ -27,5 +27,8 @@
     "stripe": "^16.8.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
