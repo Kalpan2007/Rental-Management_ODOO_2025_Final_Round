@@ -15,17 +15,17 @@ import Signup from '../pages/Signup';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
 import Dashboard from '../pages/Dashboard';
-import Checkout from '../pages/Checkout';
 import PaymentSuccess from '../pages/PaymentSuccess';
 import PaymentCancel from '../pages/PaymentCancel';
+import Categories from '../pages/Categories';
 
 // Help & Support Pages
 import FAQ from '../pages/system/FAQ';
 import Support from '../pages/system/Support';
-import HowItWorks from '../pages/system/HowItWorks';
-import Pricing from '../pages/system/Pricing';
-import Blog from '../pages/system/Blog';
-import BlogPost from '../pages/system/BlogPost';
+import HowItWorks from '../pages/help/HowItWorks';
+import Pricing from '../pages/help/Pricing';
+import Blog from '../pages/help/Blog';
+import BlogPost from '../pages/help/BlogPost';
 import ContactUs from '../pages/system/ContactUs';
 import Maintenance from '../pages/system/Maintenance';
 import UnderDevelopment from '../pages/system/UnderDevelopment';
@@ -35,6 +35,7 @@ import SystemCrash from '../pages/system/SystemCrash';
 import TermsOfService from '../pages/system/Legal/TermsOfService';
 import PrivacyPolicy from '../pages/system/Legal/PrivacyPolicy';
 import CookiesPolicy from '../pages/system/Legal/CookiesPolicy';
+import RefundPolicy from '../pages/legal/RefundPolicy';
 
 // Category Pages
 import Electronics from '../pages/categories/Electronics';
@@ -71,7 +72,7 @@ import ReferralProgram from '../pages/ReferralProgram';
 import HelpCenter from '../pages/HelpCenter';
 
 // Admin Pages
-import Dashboard from '../pages/admin/Dashboard';
+import AdminDashboard from '../pages/admin/Dashboard';
 import AdminProducts from '../pages/admin/Products';
 import AdminProductForm from '../pages/admin/ProductForm';
 import Bookings from '../pages/admin/Bookings';
@@ -79,12 +80,6 @@ import AdminBookingDetail from '../pages/admin/BookingDetail';
 import Users from '../pages/admin/Users';
 import UserDetail from '../pages/admin/UserDetail';
 import Reports from '../pages/admin/Reports';
-import Analytics from '../pages/admin/Analytics';
-import Settings as AdminSettings from '../pages/admin/Settings';
-import Payments from '../pages/admin/Payments';
-import Categories from '../pages/admin/Categories';
-import Coupons from '../pages/admin/Coupons';
-import SystemLogs from '../pages/admin/SystemLogs';
 
 const AppRoutes = () => {
   return (
@@ -94,9 +89,9 @@ const AppRoutes = () => {
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/contact-us" element={<ContactUs />} />
+      <Route path="/categories" element={<Categories />} />
       <Route path="/products" element={<Products />} />
       <Route path="/products/:id" element={<ProductDetail />} />
-      <Route path="/checkout/:productId" element={<Checkout />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/payment/cancel" element={<PaymentCancel />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
@@ -127,6 +122,7 @@ const AppRoutes = () => {
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/cookies" element={<CookiesPolicy />} />
       <Route path="/cookies-policy" element={<CookiesPolicy />} />
+      <Route path="/refund-policy" element={<RefundPolicy />} />
       
       {/* Category Routes */}
       <Route path="/categories/electronics" element={<Electronics />} />
@@ -168,7 +164,7 @@ const AppRoutes = () => {
       
       {/* Admin Routes */}
       <Route element={<AdminRoute />}>
-        <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/products" element={<AdminProducts />} />
         <Route path="/admin/products/new" element={<AdminProductForm />} />
         <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
@@ -177,12 +173,6 @@ const AppRoutes = () => {
         <Route path="/admin/users" element={<Users />} />
         <Route path="/admin/users/:id" element={<UserDetail />} />
         <Route path="/admin/reports" element={<Reports />} />
-        <Route path="/admin/analytics" element={<Analytics />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-        <Route path="/admin/payments" element={<Payments />} />
-        <Route path="/admin/categories" element={<Categories />} />
-        <Route path="/admin/coupons" element={<Coupons />} />
-        <Route path="/admin/logs" element={<SystemLogs />} />
       </Route>
       
       {/* 404 Route */}

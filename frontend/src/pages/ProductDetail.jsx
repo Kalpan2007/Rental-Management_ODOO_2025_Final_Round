@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import { getProductById, checkProductAvailability } from '../api/products';
-import { createBooking } from '../api/bookings';
 import LoadingSpinner from '../components/LoadingSpinner';
+import StripeCheckout from '../components/StripeCheckout';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-toastify';
+import {
+  ArrowLeftIcon,
+  StarIcon,
+  MapPinIcon,
+  CalendarDaysIcon,
+  CreditCardIcon,
+  HeartIcon,
+  ShareIcon
+} from '@heroicons/react/24/outline';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -19,11 +26,9 @@ const ProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date(new Date().setDate(new Date().getDate() + 3)));
-  const [isAvailable, setIsAvailable] = useState(null);
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
-  const [totalPrice, setTotalPrice] = useState(0);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Fetch product details
   useEffect(() => {
@@ -48,188 +53,31 @@ const ProductDetail = () => {
     fetchProduct();
   }, [id]);
 
-  // Calculate total price when dates or product changes
-  useEffect(() => {
-    if (product && startDate && endDate) {
-      const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-      if (days <= 0) {
-        setTotalPrice(0);
-        return;
-      }
-      
-      // Get the base price from either basePrice or first pricing rule
-      const basePrice = product.basePrice || (product.pricingRules?.[0]?.price) || 0;
-      let finalPrice = basePrice * days;
-
-      // Check if there are pricing rules
-      if (product.pricingRules && product.pricingRules.length > 0) {
-        const matchingRule = product.pricingRules.find(rule => 
-          rule.durationType === 'day' || 
-          (rule.durationType === 'week' && days >= 7) || 
-          (rule.durationType === 'month' && days >= 30)
-        );
-        
-        if (matchingRule && matchingRule.price) {
-          if (matchingRule.durationType === 'day') {
-            finalPrice = matchingRule.price * days;
-          } else if (matchingRule.durationType === 'week') {
-            finalPrice = matchingRule.price * Math.ceil(days / 7);
-          } else if (matchingRule.durationType === 'month') {
-            finalPrice = matchingRule.price * Math.ceil(days / 30);
-          }
-        }
-      }
-
-      // Apply seasonal pricing if applicable
-      if (product.seasonalPricing && product.seasonalPricing.length > 0) {
-        const applicableSeason = product.seasonalPricing.find(season => {
-          const seasonStart = new Date(season.startDate);
-          const seasonEnd = new Date(season.endDate);
-          return startDate >= seasonStart && endDate <= seasonEnd;
-        });
-
-        if (applicableSeason) {
-          finalPrice = applicableSeason.price * days;
-        }
-      }
-
-      // Apply discounts if applicable
-      if (product.discounts && product.discounts.length > 0) {
-        const applicableDiscount = product.discounts.find(discount => {
-          const discountStart = discount.startDate ? new Date(discount.startDate) : null;
-          const discountEnd = discount.endDate ? new Date(discount.endDate) : null;
-          const meetsDateCriteria = (!discountStart || startDate >= discountStart) && 
-                                  (!discountEnd || endDate <= discountEnd);
-          const meetsDurationCriteria = !discount.minimumDuration || days >= discount.minimumDuration;
-          return meetsDateCriteria && meetsDurationCriteria;
-        });
-
-        if (applicableDiscount) {
-          if (applicableDiscount.type === 'percentage') {
-            finalPrice = finalPrice * (1 - applicableDiscount.value / 100);
-          } else if (applicableDiscount.type === 'fixed') {
-            finalPrice = finalPrice - applicableDiscount.value;
-          }
-        }
-      }
-
-      setTotalPrice(Math.max(0, finalPrice)); // Ensure price is never negative
-    }
-  }, [product, startDate, endDate]);
-
-  const handleCheckAvailability = async () => {
-    // Reset availability state
-    setIsAvailable(null);
-    
-    if (!startDate || !endDate) {
-      toast.error('Please select start and end dates');
-      return;
-    }
-
-    // Ensure dates are valid
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const selectedStartDate = new Date(startDate);
-    selectedStartDate.setHours(0, 0, 0, 0);
-    
-    const selectedEndDate = new Date(endDate);
-    selectedEndDate.setHours(0, 0, 0, 0);
-
-    if (selectedStartDate < today) {
-      toast.error('Start date cannot be in the past');
-      return;
-    }
-
-    if (selectedStartDate >= selectedEndDate) {
-      toast.error('End date must be after start date');
-      return;
-    }
-
-    const diffTime = Math.abs(selectedEndDate - selectedStartDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays > 90) {  // Assuming max rental period is 90 days
-      toast.error('Maximum rental period is 90 days');
-      return;
-    }
-
-    try {
-      setCheckingAvailability(true);
-      const response = await checkProductAvailability(id, {
-        startDate: selectedStartDate.toISOString(),
-        endDate: selectedEndDate.toISOString()
-      });
-      
-      if (response.success) {
-        const isAvail = response.data?.isAvailable || false;
-        setIsAvailable(isAvail);
-        
-        if (isAvail) {
-          toast.success('Product is available for selected dates!');
-        } else {
-          toast.error('Product is not available for selected dates');
-        }
-      } else {
-        toast.error(response.error || 'Failed to check availability');
-        setIsAvailable(false);
-      }
-    } catch (err) {
-      console.error('Error checking availability:', err);
-      toast.error('Failed to check availability. Please try again.');
-      setIsAvailable(false);
-    } finally {
-      setCheckingAvailability(false);
-    }
-  };
-
-  const handleBookNow = async () => {
+  const handleRentNow = () => {
     if (!isAuthenticated) {
       toast.info('Please log in to book this product');
       navigate('/login', { state: { from: `/products/${id}` } });
       return;
     }
 
-    if (isAvailable === null) {
-      toast.warning('Please check availability before booking');
-      return;
-    }
+    setShowCheckout(true);
+  };
 
-    if (!isAvailable) {
-      toast.error('Product is not available for selected dates');
-      return;
-    }
+  const toggleFavorite = () => {
+    setIsFavorite(!isFavorite);
+    toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+  };
 
-    if (totalPrice <= 0) {
-      toast.error('Invalid price calculation. Please try again.');
-      return;
-    }
-
-    try {
-      const bookingData = {
-        productId: id,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
-        totalPrice: parseFloat(totalPrice.toFixed(2))
-      };
-
-      const response = await createBooking(bookingData);
-      
-      if (response.success) {
-        toast.success('Booking created successfully!');
-        navigate(`/my-bookings/${response.data._id}`);
-      } else {
-        toast.error(response.error || 'Failed to create booking. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error creating booking:', err);
-      if (err.response?.status === 400) {
-        toast.error(err.response.data.message || 'Invalid booking request');
-      } else if (err.response?.status === 403) {
-        toast.error('You are not authorized to make this booking');
-      } else {
-        toast.error('Failed to create booking. Please try again later.');
-      }
+  const shareProduct = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: `Check out this ${product.category} on RentalHub!`,
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard!');
     }
   };
 
@@ -243,11 +91,26 @@ const ProductDetail = () => {
 
   if (error || !product) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${
+        darkMode 
+          ? 'bg-gradient-to-br from-[#583101] via-[#603808] to-[#6f4518]' 
+          : 'bg-gradient-to-br from-[#ffedd8] via-[#f3d5b5] to-[#e7bc91]'
+      }`}>
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <h2 className={`text-2xl font-bold mb-4 ${
+            darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+          }`}>
+            Error
+          </h2>
           <p className="text-red-500 mb-6">{error || 'Product not found'}</p>
-          <Link to="/products" className="btn-primary">
+          <Link 
+            to="/products" 
+            className={`py-3 px-8 rounded-xl font-semibold transition-all duration-200 ${
+              darkMode
+                ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8]'
+                : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8]'
+            }`}
+          >
             Back to Products
           </Link>
         </div>
@@ -255,31 +118,431 @@ const ProductDetail = () => {
     );
   }
 
+  const isOwner = user && product.owner && user._id === product.owner._id;
+
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <>
+    <div className={`min-h-screen ${
+      darkMode 
+        ? 'bg-gradient-to-br from-[#583101] via-[#603808] to-[#6f4518]' 
+        : 'bg-gradient-to-br from-[#ffedd8] via-[#f3d5b5] to-[#e7bc91]'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Back Button */}
         <div className="mb-6">
-          <Link to="/products" className="text-primary-600 hover:text-primary-700 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
+          <Link 
+            to="/products" 
+            className={`flex items-center transition-colors ${
+              darkMode 
+                ? 'text-[#bc8a5f] hover:text-[#f3d5b5]' 
+                : 'text-[#8b5e34] hover:text-[#6f4518]'
+            }`}
+          >
+            <ArrowLeftIcon className="h-5 w-5 mr-2" />
             Back to Products
           </Link>
         </div>
 
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-10 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg overflow-hidden`}>
-          {/* Product Image */}
-          <motion.div 
-            className="h-96 lg:h-auto overflow-hidden"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <img 
-              src={product.imageUrl || 'https://via.placeholder.com/600x400?text=No+Image+Available'} 
-              alt={product.name} 
+        <div className={`rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm border ${
+          darkMode 
+            ? 'bg-[#603808]/90 border-[#8b5e34]/50' 
+            : 'bg-white/90 border-[#d4a276]/30'
+        }`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+            {/* Product Images */}
+            <motion.div 
+              className="relative h-96 lg:h-auto overflow-hidden"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <img 
+                src={product.images?.[currentImageIndex] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=400&fit=crop&auto=format'} 
+                alt={product.name} 
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Image Navigation */}
+              {product.images && product.images.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                  {product.images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-3 h-3 rounded-full transition-all ${
+                        index === currentImageIndex 
+                          ? 'bg-white' 
+                          : 'bg-white/50 hover:bg-white/75'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Favorite & Share Buttons */}
+              <div className="absolute top-4 right-4 flex space-x-2">
+                <button
+                  onClick={toggleFavorite}
+                  className={`p-3 rounded-full backdrop-blur-md transition-all ${
+                    isFavorite 
+                      ? 'bg-red-500 text-white' 
+                      : 'bg-white/80 text-gray-700 hover:bg-white'
+                  }`}
+                >
+                  <HeartIcon className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+                <button
+                  onClick={shareProduct}
+                  className="p-3 rounded-full bg-white/80 text-gray-700 hover:bg-white backdrop-blur-md transition-all"
+                >
+                  <ShareIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Product Details */}
+            <motion.div 
+              className="p-8 lg:p-12"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              {/* Product Header */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                    darkMode 
+                      ? 'bg-[#8b5e34]/30 text-[#e7bc91]' 
+                      : 'bg-[#f3d5b5]/50 text-[#6f4518]'
+                  }`}>
+                    {product.category}
+                  </span>
+                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                    product.status === 'approved' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                  }`}>
+                    {product.status === 'approved' ? '✅ Available' : '❌ Unavailable'}
+                  </span>
+                </div>
+                
+                <h1 className={`text-4xl font-bold mb-4 ${
+                  darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                }`}>
+                  {product.name}
+                </h1>
+                
+                {/* Rating */}
+                {product.rating && (
+                  <div className="flex items-center mb-4">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <StarIcon 
+                          key={i} 
+                          className={`h-5 w-5 ${
+                            i < Math.floor(product.rating) 
+                              ? 'text-yellow-400 fill-current' 
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
+                    </div>
+                    <span className={`ml-2 text-sm ${
+                      darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                    }`}>
+                      {product.rating.toFixed(1)} ({product.reviewCount || 0} reviews)
+                    </span>
+                  </div>
+                )}
+
+                {/* Price */}
+                <div className="mb-6">
+                  <div className={`text-3xl font-bold ${
+                    darkMode ? 'text-[#bc8a5f]' : 'text-[#8b5e34]'
+                  }`}>
+                    ₹{product.basePrice || 100}
+                    <span className={`text-lg font-normal ml-2 ${
+                      darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                    }`}>
+                      per day
+                    </span>
+                  </div>
+                  <p className={`text-sm ${
+                    darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                  }`}>
+                    Suggested price • You can negotiate
+                  </p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="mb-8">
+                <h3 className={`text-xl font-bold mb-4 ${
+                  darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                }`}>
+                  Description
+                </h3>
+                <p className={`text-lg leading-relaxed ${
+                  darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                }`}>
+                  {product.description}
+                </p>
+              </div>
+
+              {/* Product Details */}
+              <div className="mb-8">
+                <h3 className={`text-xl font-bold mb-4 ${
+                  darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                }`}>
+                  Product Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {product.owner && (
+                    <div>
+                      <p className={`text-sm font-medium ${
+                        darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                      }`}>
+                        Owner
+                      </p>
+                      <p className={`${
+                        darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                      }`}>
+                        {product.owner.name}
+                      </p>
+                    </div>
+                  )}
+                  {product.location && (
+                    <div>
+                      <p className={`text-sm font-medium ${
+                        darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                      }`}>
+                        Location
+                      </p>
+                      <p className={`flex items-center ${
+                        darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                      }`}>
+                        <MapPinIcon className="h-4 w-4 mr-1" />
+                        {product.location}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                    }`}>
+                      Condition
+                    </p>
+                    <p className={`${
+                      darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                    }`}>
+                      {product.condition || 'Excellent'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                    }`}>
+                      Availability
+                    </p>
+                    <p className={`flex items-center ${
+                      product.availability 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full mr-2 ${
+                        product.availability ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                      {product.availability ? 'Available' : 'Not Available'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-4">
+                {!isOwner && product.status === 'approved' && product.availability ? (
+                  <motion.button
+                    onClick={handleRentNow}
+                    className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all duration-200 ${
+                      darkMode
+                        ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8] shadow-lg hover:shadow-xl'
+                        : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <CreditCardIcon className="h-6 w-6 inline mr-3" />
+                    Rent Now with Custom Price
+                  </motion.button>
+                ) : isOwner ? (
+                  <div className={`p-4 rounded-xl text-center ${
+                    darkMode 
+                      ? 'bg-[#8b5e34]/20 border border-[#bc8a5f]/30' 
+                      : 'bg-[#f3d5b5]/30 border border-[#d4a276]/30'
+                  }`}>
+                    <p className={`font-medium ${
+                      darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                    }`}>
+                      This is your product
+                    </p>
+                    <Link 
+                      to={`/products/edit/${product._id}`}
+                      className={`inline-block mt-2 py-2 px-6 rounded-xl font-semibold transition-all duration-200 border-2 ${
+                        darkMode
+                          ? 'border-[#bc8a5f] text-[#bc8a5f] hover:bg-[#bc8a5f] hover:text-[#ffedd8]'
+                          : 'border-[#8b5e34] text-[#8b5e34] hover:bg-[#8b5e34] hover:text-[#ffedd8]'
+                      }`}
+                    >
+                      Edit Product
+                    </Link>
+                  </div>
+                ) : (
+                  <div className={`p-4 rounded-xl text-center ${
+                    darkMode 
+                      ? 'bg-red-900/20 border border-red-800' 
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className="text-red-600 dark:text-red-400 font-medium">
+                      {product.status !== 'approved' 
+                        ? 'Product is pending approval' 
+                        : 'Currently not available for rent'
+                      }
+                    </p>
+                  </div>
+                )}
+
+                {!isAuthenticated && (
+                  <p className={`text-center text-sm ${
+                    darkMode ? 'text-[#d4a276]' : 'text-[#8b5e34]'
+                  }`}>
+                    <Link 
+                      to="/login" 
+                      className={`font-semibold hover:underline ${
+                        darkMode ? 'text-[#bc8a5f]' : 'text-[#8b5e34]'
+                      }`}
+                    >
+                      Log in
+                    </Link>
+                    {' '}to rent this product
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Additional Information */}
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Features */}
+          {product.features && product.features.length > 0 && (
+            <motion.div
+              className={`p-6 rounded-xl backdrop-blur-sm border ${
+                darkMode 
+                  ? 'bg-[#603808]/80 border-[#8b5e34]/50' 
+                  : 'bg-white/80 border-[#d4a276]/30'
+              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <h3 className={`text-xl font-bold mb-4 ${
+                darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+              }`}>
+                Features
+              </h3>
+              <ul className="space-y-2">
+                {product.features.map((feature, index) => (
+                  <li 
+                    key={index}
+                    className={`flex items-center ${
+                      darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                    }`}
+                  >
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3" />
+                    <span>{feature.name}: {feature.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          )}
+
+          {/* Rental Terms */}
+          <motion.div
+            className={`p-6 rounded-xl backdrop-blur-sm border ${
+              darkMode 
+                ? 'bg-[#603808]/80 border-[#8b5e34]/50' 
+                : 'bg-white/80 border-[#d4a276]/30'
+            }`}
+            <h3 className={`text-xl font-bold mb-4 ${
+              darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+            }`}>
+              Rental Terms
+            </h3>
+            <ul className={`space-y-2 text-sm ${
+              darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+            }`}>
+              <li>• Minimum rental period: 1 day</li>
+              <li>• Security deposit may be required</li>
+              <li>• Late return charges apply</li>
+              <li>• Product must be returned in same condition</li>
+              <li>• Pickup and delivery available</li>
+            </ul>
+          </motion.div>
+
+          {/* Owner Information */}
+          {product.owner && (
+            <motion.div
+              className={`p-6 rounded-xl backdrop-blur-sm border ${
+                darkMode 
+                  ? 'bg-[#603808]/80 border-[#8b5e34]/50' 
+                  : 'bg-white/80 border-[#d4a276]/30'
               className="w-full h-full object-cover"
-            />
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+            >
+              <h3 className={`text-xl font-bold mb-4 ${
+                darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+              }`}>
+                Owner Information
+              </h3>
+              <div className="flex items-center space-x-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
+                  darkMode ? 'bg-[#8b5e34] text-[#ffedd8]' : 'bg-[#8b5e34] text-[#ffedd8]'
+                }`}>
+                  {product.owner.name?.charAt(0)?.toUpperCase()}
+                </div>
+                <div>
+                  <p className={`font-semibold ${
+                    darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+                  }`}>
+                    {product.owner.name}
+                  </p>
+                  <p className={`text-sm ${
+                    darkMode ? 'text-[#e7bc91]' : 'text-[#6f4518]'
+                  }`}>
+                    Verified Owner
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {/* Stripe Checkout Modal */}
+    {showCheckout && (
+      <StripeCheckout 
+        product={product} 
+        onClose={() => setShowCheckout(false)} 
+      />
+    )}
+    </>
+  );
+};
+
+export default ProductDetail;
           </motion.div>
 
           {/* Product Details */}

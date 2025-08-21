@@ -88,10 +88,34 @@ const Home = () => {
             className="mt-10 flex flex-wrap gap-4 justify-center"
             variants={itemVariants}
           >
-            <Link to="/products" className="btn-primary">
+            <Link 
+              to="/products" 
+              className={`py-3 px-8 rounded-xl font-semibold transition-all duration-200 ${
+                darkMode
+                  ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8] shadow-lg hover:shadow-xl'
+                  : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl'
+              }`}
+            >
               Browse All Products
             </Link>
-            <Link to="/how-it-works" className="btn-secondary">
+            <Link 
+              to="/categories" 
+              className={`py-3 px-8 rounded-xl font-semibold transition-all duration-200 border-2 ${
+                darkMode
+                  ? 'border-[#bc8a5f] text-[#bc8a5f] hover:bg-[#bc8a5f] hover:text-[#ffedd8]'
+                  : 'border-[#8b5e34] text-[#8b5e34] hover:bg-[#8b5e34] hover:text-[#ffedd8]'
+              }`}
+            >
+              Browse Categories
+            </Link>
+            <Link 
+              to="/how-it-works" 
+              className={`py-3 px-8 rounded-xl font-semibold transition-all duration-200 border-2 ${
+                darkMode
+                  ? 'border-[#8b5e34] text-[#e7bc91] hover:bg-[#8b5e34] hover:text-[#ffedd8]'
+                  : 'border-[#d4a276] text-[#6f4518] hover:bg-[#d4a276] hover:text-[#583101]'
+              }`}
+            >
               How It Works
             </Link>
           </motion.div>
@@ -102,8 +126,19 @@ const Home = () => {
       <section className={`py-16 px-4 sm:px-6 lg:px-8 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
-            <h2 className="text-3xl font-bold">Featured Products</h2>
-            <Link to="/products" className="text-primary-500 hover:text-primary-600 font-medium">
+            <h2 className={`text-3xl font-bold ${
+              darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
+            }`}>
+              Featured Products
+            </h2>
+            <Link 
+              to="/products" 
+              className={`font-medium transition-colors ${
+                darkMode 
+                  ? 'text-[#bc8a5f] hover:text-[#f3d5b5]' 
+                  : 'text-[#8b5e34] hover:text-[#6f4518]'
+              }`}
+            >
               View All →
             </Link>
           </div>

@@ -25,6 +25,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/stripe', require('./routes/stripe'));
 app.use('/api/pricing', require('./routes/pricing'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/returns', require('./routes/returns'));

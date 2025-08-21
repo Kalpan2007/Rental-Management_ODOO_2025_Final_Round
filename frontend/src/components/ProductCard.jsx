@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import StripeCheckout from './StripeCheckout';
 import { PencilIcon, EyeIcon, CalendarDaysIcon, TagIcon } from '@heroicons/react/24/outline';
 
 const ProductCard = ({ product, index = 0 }) => {
   const { user } = useAuth();
   const { darkMode } = useTheme();
+  const [showCheckout, setShowCheckout] = useState(false);
   
   // Return null if product is undefined
   if (!product) {
@@ -16,7 +19,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const {
     _id,
     name,
-    price,
+    basePrice,
     images,
     category,
     availability,
@@ -61,6 +64,7 @@ const ProductCard = ({ product, index = 0 }) => {
   const statusConfig = getStatusConfig(status);
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -138,7 +142,7 @@ const ProductCard = ({ product, index = 0 }) => {
             <div className={`text-lg font-bold ${
               darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
             }`}>
-              ${typeof price === 'number' ? price.toFixed(2) : price}
+              ₹{typeof basePrice === 'number' ? basePrice.toFixed(2) : basePrice || 100}
             </div>
             <div className={`text-xs ${
               darkMode ? 'text-[#e7bc91]' : 'text-[#8b5e34]'
@@ -217,17 +221,31 @@ const ProductCard = ({ product, index = 0 }) => {
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-3">
           {/* Primary Action */}
-          <Link
-            to={`/products/${_id}`}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
-              darkMode
-                ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-            }`}
-          >
-            <EyeIcon className="w-4 h-4" />
-            View Details
-          </Link>
+          {availability && status === 'approved' && !isOwner ? (
+            <button
+              onClick={() => setShowCheckout(true)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                darkMode
+                  ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                  : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+              }`}
+            >
+              <CreditCardIcon className="w-4 h-4" />
+              Rent Now
+            </button>
+          ) : (
+            <Link
+              to={`/products/${_id}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                darkMode
+                  ? 'bg-[#bc8a5f] hover:bg-[#a47148] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                  : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+              }`}
+            >
+              <EyeIcon className="w-4 h-4" />
+              View Details
+            </Link>
+          )}
           
           {/* Owner Edit Button */}
           {isOwner && (
@@ -273,6 +291,15 @@ const ProductCard = ({ product, index = 0 }) => {
         }`} />
       </div>
     </motion.div>
+
+    {/* Stripe Checkout Modal */}
+    {showCheckout && (
+      <StripeCheckout 
+        product={product} 
+        onClose={() => setShowCheckout(false)} 
+      />
+    )}
+    </>
   );
 };
 
