@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import AdminRoute from './AdminRoute';
+import PublicRoute from './PublicRoute';
 
 // Public Pages
 import Home from '../pages/Home';
@@ -13,20 +14,27 @@ import Login from '../pages/Login';
 import Signup from '../pages/Signup';
 import Unauthorized from '../pages/Unauthorized';
 import NotFound from '../pages/NotFound';
+import Dashboard from '../pages/Dashboard';
+import Checkout from '../pages/Checkout';
+import PaymentSuccess from '../pages/PaymentSuccess';
+import PaymentCancel from '../pages/PaymentCancel';
 
 // Help & Support Pages
-import FAQ from '../pages/help/FAQ';
-import Support from '../pages/help/Support';
-import HowItWorks from '../pages/help/HowItWorks';
-import Pricing from '../pages/help/Pricing';
-import Blog from '../pages/help/Blog';
-import BlogPost from '../pages/help/BlogPost';
+import FAQ from '../pages/system/FAQ';
+import Support from '../pages/system/Support';
+import HowItWorks from '../pages/system/HowItWorks';
+import Pricing from '../pages/system/Pricing';
+import Blog from '../pages/system/Blog';
+import BlogPost from '../pages/system/BlogPost';
+import ContactUs from '../pages/system/ContactUs';
+import Maintenance from '../pages/system/Maintenance';
+import UnderDevelopment from '../pages/system/UnderDevelopment';
+import SystemCrash from '../pages/system/SystemCrash';
 
 // Legal Pages
-import TermsOfService from '../pages/legal/TermsOfService';
-import PrivacyPolicy from '../pages/legal/PrivacyPolicy';
-import CookiesPolicy from '../pages/legal/CookiesPolicy';
-import RefundPolicy from '../pages/legal/RefundPolicy';
+import TermsOfService from '../pages/system/Legal/TermsOfService';
+import PrivacyPolicy from '../pages/system/Legal/PrivacyPolicy';
+import CookiesPolicy from '../pages/system/Legal/CookiesPolicy';
 
 // Category Pages
 import Electronics from '../pages/categories/Electronics';
@@ -38,6 +46,11 @@ import PartySupplies from '../pages/categories/PartySupplies';
 import Tools from '../pages/categories/Tools';
 import SportsEquipment from '../pages/categories/SportsEquipment';
 import MusicalInstruments from '../pages/categories/MusicalInstruments';
+import Vehicles from '../pages/categories/Vehicles';
+import HomeAppliances from '../pages/categories/HomeAppliances';
+import Fashion from '../pages/categories/Fashion';
+import Books from '../pages/categories/Books';
+import Gaming from '../pages/categories/Gaming';
 
 // Protected Pages
 import Profile from '../pages/Profile';
@@ -50,6 +63,12 @@ import Notifications from '../pages/Notifications';
 import Settings from '../pages/Settings';
 import PaymentMethods from '../pages/PaymentMethods';
 import AddressBook from '../pages/AddressBook';
+import Wishlist from '../pages/Wishlist';
+import OrderHistory from '../pages/OrderHistory';
+import Reviews from '../pages/Reviews';
+import Wallet from '../pages/Wallet';
+import ReferralProgram from '../pages/ReferralProgram';
+import HelpCenter from '../pages/HelpCenter';
 
 // Admin Pages
 import Dashboard from '../pages/admin/Dashboard';
@@ -62,6 +81,10 @@ import UserDetail from '../pages/admin/UserDetail';
 import Reports from '../pages/admin/Reports';
 import Analytics from '../pages/admin/Analytics';
 import Settings as AdminSettings from '../pages/admin/Settings';
+import Payments from '../pages/admin/Payments';
+import Categories from '../pages/admin/Categories';
+import Coupons from '../pages/admin/Coupons';
+import SystemLogs from '../pages/admin/SystemLogs';
 
 const AppRoutes = () => {
   return (
@@ -70,12 +93,23 @@ const AppRoutes = () => {
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/contact-us" element={<ContactUs />} />
       <Route path="/products" element={<Products />} />
       <Route path="/products/:id" element={<ProductDetail />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/register" element={<Signup />} />
+      <Route path="/checkout/:productId" element={<Checkout />} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/cancel" element={<PaymentCancel />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="/maintenance" element={<Maintenance />} />
+      <Route path="/under-development" element={<UnderDevelopment />} />
+      <Route path="/system-crash" element={<SystemCrash />} />
+      
+      {/* Auth Routes (only for non-authenticated users) */}
+      <Route element={<PublicRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/register" element={<Signup />} />
+      </Route>
       
       {/* Help & Support Routes */}
       <Route path="/faq" element={<FAQ />} />
@@ -84,12 +118,15 @@ const AppRoutes = () => {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
+      <Route path="/help" element={<HelpCenter />} />
       
       {/* Legal Routes */}
       <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/cookies" element={<CookiesPolicy />} />
-      <Route path="/refund" element={<RefundPolicy />} />
+      <Route path="/cookies-policy" element={<CookiesPolicy />} />
       
       {/* Category Routes */}
       <Route path="/categories/electronics" element={<Electronics />} />
@@ -101,19 +138,30 @@ const AppRoutes = () => {
       <Route path="/categories/tools" element={<Tools />} />
       <Route path="/categories/sports-equipment" element={<SportsEquipment />} />
       <Route path="/categories/musical-instruments" element={<MusicalInstruments />} />
+      <Route path="/categories/vehicles" element={<Vehicles />} />
+      <Route path="/categories/home-appliances" element={<HomeAppliances />} />
+      <Route path="/categories/fashion" element={<Fashion />} />
+      <Route path="/categories/books" element={<Books />} />
+      <Route path="/categories/gaming" element={<Gaming />} />
       
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/bookings/:id" element={<BookingDetail />} />
         <Route path="/my-products" element={<MyProducts />} />
-        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/favorites" element={<Wishlist />} />
+        <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/payment-methods" element={<PaymentMethods />} />
         <Route path="/address-book" element={<AddressBook />} />
+        <Route path="/order-history" element={<OrderHistory />} />
+        <Route path="/reviews" element={<Reviews />} />
+        <Route path="/wallet" element={<Wallet />} />
+        <Route path="/referral" element={<ReferralProgram />} />
         <Route path="/products/new" element={<ProductForm />} />
         <Route path="/products/edit/:id" element={<ProductForm />} />
       </Route>
@@ -131,6 +179,10 @@ const AppRoutes = () => {
         <Route path="/admin/reports" element={<Reports />} />
         <Route path="/admin/analytics" element={<Analytics />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route path="/admin/payments" element={<Payments />} />
+        <Route path="/admin/categories" element={<Categories />} />
+        <Route path="/admin/coupons" element={<Coupons />} />
+        <Route path="/admin/logs" element={<SystemLogs />} />
       </Route>
       
       {/* 404 Route */}

@@ -12,7 +12,9 @@ import {
   CurrencyRupeeIcon,
   ChartBarIcon,
   PlusCircleIcon,
-  EyeIcon
+  EyeIcon,
+  HeartIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
@@ -22,7 +24,9 @@ const Dashboard = () => {
     totalBookings: 0,
     activeBookings: 0,
     totalSpent: 0,
-    myProducts: 0
+    myProducts: 0,
+    totalEarnings: 0,
+    pendingPayments: 0
   });
   const [recentBookings, setRecentBookings] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
@@ -49,12 +53,18 @@ const Dashboard = () => {
         const totalSpent = bookings
           .filter(b => b.status === 'completed')
           .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+
+        const totalEarnings = bookings
+          .filter(b => b.status === 'completed' && b.productOwner === user._id)
+          .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
         
         setStats({
           totalBookings: bookings.length,
           activeBookings,
           totalSpent,
-          myProducts: products.length
+          myProducts: products.length,
+          totalEarnings,
+          pendingPayments: bookings.filter(b => b.paymentStatus === 'pending').length
         });
         
         setRecentBookings(bookings.slice(0, 5));
@@ -78,29 +88,60 @@ const Dashboard = () => {
       value: stats.totalBookings,
       icon: CalendarDaysIcon,
       color: 'from-blue-500 to-blue-600',
-      link: '/my-bookings'
+      link: '/my-bookings',
+      description: 'All your rental bookings'
     },
     {
       title: 'Active Bookings',
       value: stats.activeBookings,
       icon: ShoppingBagIcon,
       color: 'from-green-500 to-green-600',
-      link: '/my-bookings?status=active'
+      link: '/my-bookings?status=active',
+      description: 'Currently active rentals'
     },
     {
       title: 'Total Spent',
       value: `₹${stats.totalSpent.toFixed(2)}`,
       icon: CurrencyRupeeIcon,
       color: 'from-purple-500 to-purple-600',
-      link: '/payment-history'
+      link: '/order-history',
+      description: 'Amount spent on rentals'
     },
     {
       title: 'My Products',
       value: stats.myProducts,
       icon: ChartBarIcon,
       color: 'from-orange-500 to-orange-600',
-      link: '/my-products'
+      link: '/my-products',
+      description: 'Products you have listed'
+    },
+    {
+      title: 'Total Earnings',
+      value: `₹${stats.totalEarnings.toFixed(2)}`,
+      icon: CurrencyRupeeIcon,
+      color: 'from-emerald-500 to-emerald-600',
+      link: '/wallet',
+      description: 'Earnings from your products'
+    },
+    {
+      title: 'Pending Payments',
+      value: stats.pendingPayments,
+      icon: BellIcon,
+      color: 'from-red-500 to-red-600',
+      link: '/wallet',
+      description: 'Payments awaiting processing'
     }
+  ];
+
+  const quickActions = [
+    { title: 'Browse Products', icon: '🔍', link: '/products', color: 'bg-blue-500' },
+    { title: 'List Product', icon: '📦', link: '/products/new', color: 'bg-green-500' },
+    { title: 'My Bookings', icon: '📅', link: '/my-bookings', color: 'bg-purple-500' },
+    { title: 'Messages', icon: '💬', link: '/messages', color: 'bg-orange-500' },
+    { title: 'Wallet', icon: '💰', link: '/wallet', color: 'bg-emerald-500' },
+    { title: 'Support', icon: '🆘', link: '/support', color: 'bg-red-500' },
+    { title: 'Settings', icon: '⚙️', link: '/settings', color: 'bg-gray-500' },
+    { title: 'Help Center', icon: '❓', link: '/help', color: 'bg-indigo-500' }
   ];
 
   if (loading) {
@@ -121,16 +162,30 @@ const Dashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-3xl font-bold mb-2">
-            Welcome back, {user?.name}! 👋
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Here's what's happening with your rentals today.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">
+                Welcome back, {user?.name}! 👋
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Here's what's happening with your rentals today.
+              </p>
+            </div>
+            <div className="hidden md:flex items-center space-x-4">
+              <Link to="/products/new" className="btn-primary flex items-center">
+                <PlusCircleIcon className="h-5 w-5 mr-2" />
+                List Product
+              </Link>
+              <Link to="/products" className="btn-secondary flex items-center">
+                <EyeIcon className="h-5 w-5 mr-2" />
+                Browse
+              </Link>
+            </div>
+          </div>
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {statCards.map((stat, index) => (
             <motion.div
               key={index}
@@ -144,6 +199,7 @@ const Dashboard = () => {
                     <div>
                       <p className="text-white/80 text-sm font-medium">{stat.title}</p>
                       <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                      <p className="text-white/60 text-xs mt-1">{stat.description}</p>
                     </div>
                     <stat.icon className="h-8 w-8 text-white/80" />
                   </div>
@@ -154,7 +210,7 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Recent Bookings */}
           <motion.div
             className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}
@@ -284,27 +340,53 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <motion.div
-          className={`mt-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}
+          className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
         >
           <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { title: 'Browse Products', icon: '🔍', link: '/products' },
-              { title: 'List Product', icon: '📦', link: '/products/new' },
-              { title: 'My Bookings', icon: '📅', link: '/my-bookings' },
-              { title: 'Support', icon: '💬', link: '/support' }
-            ].map((action, index) => (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            {quickActions.map((action, index) => (
               <Link
                 key={index}
                 to={action.link}
-                className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
+                className={`p-4 rounded-lg text-center ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'} transition-colors group`}
               >
-                <div className="text-2xl mb-2">{action.icon}</div>
+                <div className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform`}>
+                  <span className="text-2xl text-white">{action.icon}</span>
+                </div>
                 <p className="text-sm font-medium">{action.title}</p>
               </Link>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Recent Activity */}
+        <motion.div
+          className={`mt-8 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-6`}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+        >
+          <h2 className="text-xl font-bold mb-6">Recent Activity</h2>
+          <div className="space-y-4">
+            {[
+              { action: 'Listed new product', item: 'Professional Camera', time: '2 hours ago', type: 'success' },
+              { action: 'Booking confirmed', item: 'DJ Equipment Set', time: '5 hours ago', type: 'info' },
+              { action: 'Payment received', item: '₹500 for Audio System', time: '1 day ago', type: 'success' },
+              { action: 'Product inquiry', item: 'Someone asked about your laptop', time: '2 days ago', type: 'info' }
+            ].map((activity, index) => (
+              <div key={index} className="flex items-center space-x-4">
+                <div className={`w-2 h-2 rounded-full ${
+                  activity.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                }`} />
+                <div className="flex-1">
+                  <p className="font-medium">{activity.action}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{activity.item}</p>
+                </div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{activity.time}</span>
+              </div>
             ))}
           </div>
         </motion.div>
