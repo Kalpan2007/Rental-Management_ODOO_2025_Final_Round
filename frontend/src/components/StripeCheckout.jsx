@@ -142,7 +142,7 @@ const StripeCheckout = ({ product, onClose }) => {
           {/* Product Info */}
           <div className="flex items-center space-x-4 mb-8">
             <img 
-              src={product?.images?.[0] || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=80&h=80&fit=crop'} 
+              src={product?.images?.[0] || product?.imageUrl || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=80&h=80&fit=crop'} 
               alt={product?.name}
               className="w-20 h-20 object-cover rounded-xl"
             />

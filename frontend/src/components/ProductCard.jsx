@@ -20,7 +20,9 @@ const ProductCard = ({ product, index = 0 }) => {
     _id,
     name,
     basePrice,
+    price,
     images,
+    imageUrl,
     category,
     availability,
     owner,
@@ -30,11 +32,15 @@ const ProductCard = ({ product, index = 0 }) => {
   } = product;
 
   const isOwner = user && owner && user._id && owner === user._id;
+  const productPrice = basePrice || price || 100;
 
   // Enhanced image handling with multiple fallbacks
   const getImageUrl = () => {
     if (images && images.length > 0) {
       return images[0];
+    }
+    if (imageUrl) {
+      return imageUrl;
     }
     return `https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop&auto=format`;
   };
@@ -96,7 +102,7 @@ const ProductCard = ({ product, index = 0 }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Availability Overlay */}
-        {!availability && (
+        {availability === false && (
           <motion.div 
             className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center"
             initial={{ opacity: 0 }}
@@ -142,7 +148,7 @@ const ProductCard = ({ product, index = 0 }) => {
             <div className={`text-lg font-bold ${
               darkMode ? 'text-[#ffedd8]' : 'text-[#583101]'
             }`}>
-              ₹{typeof basePrice === 'number' ? basePrice.toFixed(2) : basePrice || 100}
+              ₹{typeof productPrice === 'number' ? productPrice.toFixed(2) : productPrice}
             </div>
             <div className={`text-xs ${
               darkMode ? 'text-[#e7bc91]' : 'text-[#8b5e34]'
@@ -221,7 +227,7 @@ const ProductCard = ({ product, index = 0 }) => {
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-3">
           {/* Primary Action */}
-          {availability && status === 'approved' && !isOwner ? (
+          {(availability !== false) && (status === 'approved' || !status) && !isOwner ? (
             <button
               onClick={() => setShowCheckout(true)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${
@@ -230,7 +236,9 @@ const ProductCard = ({ product, index = 0 }) => {
                   : 'bg-[#8b5e34] hover:bg-[#6f4518] text-[#ffedd8] shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
               }`}
             >
-              <CreditCardIcon className="w-4 h-4" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
               Rent Now
             </button>
           ) : (
@@ -264,7 +272,7 @@ const ProductCard = ({ product, index = 0 }) => {
         </div>
 
         {/* Available Dates (if any) */}
-        {availability && (
+        {(availability !== false) && (
           <motion.div 
             className={`mt-4 pt-4 border-t flex items-center gap-2 text-sm ${
               darkMode 
