@@ -1,19 +1,19 @@
 import api from './axios';
 
-export const getProducts = async (params) => {
+export const getProducts = async (params = {}) => {
   try {
     const response = await api.get('/products', { params });
-    // Ensure we always return a consistent structure
     return {
-      data: response.data?.products || response.data || [],
-      success: true
+      data: response.data?.data || response.data || [],
+      success: true,
+      pagination: response.data?.pagination
     };
   } catch (error) {
     console.error('Error fetching products:', error);
     return {
       data: [],
       success: false,
-      error: error.message || 'Failed to fetch products'
+      error: error.response?.data?.message || error.message || 'Failed to fetch products'
     };
   }
 };
@@ -22,7 +22,7 @@ export const getProductById = async (id) => {
   try {
     const response = await api.get(`/products/${id}`);
     return {
-      data: response.data?.product || response.data || {},
+      data: response.data?.data || response.data || {},
       success: true
     };
   } catch (error) {
@@ -30,70 +30,86 @@ export const getProductById = async (id) => {
     return {
       data: {},
       success: false,
-      error: error.message || 'Failed to fetch product details'
+      error: error.response?.data?.message || error.message || 'Failed to fetch product details'
     };
   }
 };
 
 export const getProduct = async (id) => {
-  try {
-    const response = await api.get(`/products/${id}`);
-    return {
-      data: response.data?.product || response.data || {},
-      success: true
-    };
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    return {
-      data: {},
-      success: false,
-      error: error.message || 'Failed to fetch product'
-    };
-  }
+  return getProductById(id);
 };
 
 export const getProductAvailability = async (id, startDate, endDate) => {
-  const response = await api.get(`/products/availability/${id}`, {
-    params: { startDate, endDate },
-  });
-  return response.data;
-};
-
-export const checkProductAvailability = async (id, dates) => {
   try {
     const response = await api.get(`/products/availability/${id}`, {
-      params: dates,
+      params: { startDate, endDate },
     });
     return {
-      data: response.data,
+      data: response.data?.data || response.data || {},
       success: true
     };
   } catch (error) {
-    console.error('Error checking product availability:', error);
+    console.error('Error checking availability:', error);
     return {
       data: {},
       success: false,
-      error: error.message || 'Failed to check product availability'
+      error: error.response?.data?.message || error.message || 'Failed to check availability'
     };
   }
 };
 
+export const checkProductAvailability = async (id, dates) => {
+  return getProductAvailability(id, dates.startDate, dates.endDate);
+};
+
 export const createProduct = async (productData) => {
-  const response = await api.post('/products', productData);
-  return response.data;
+  try {
+    const response = await api.post('/products', productData);
+    return {
+      data: response.data?.data || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error creating product:', error);
+    throw error;
+  }
 };
 
 export const updateProduct = async (id, productData) => {
-  const response = await api.put(`/products/${id}`, productData);
-  return response.data;
+  try {
+    const response = await api.put(`/products/${id}`, productData);
+    return {
+      data: response.data?.data || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
 };
 
 export const deleteProduct = async (id) => {
-  const response = await api.delete(`/products/${id}`);
-  return response.data;
+  try {
+    const response = await api.delete(`/products/${id}`);
+    return {
+      data: response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    throw error;
+  }
 };
 
 export const moderateProduct = async (id, { status, reason }) => {
-  const response = await api.post(`/products/${id}/moderate`, { status, reason });
-  return response.data;
+  try {
+    const response = await api.post(`/products/${id}/moderate`, { status, reason });
+    return {
+      data: response.data?.data || response.data || {},
+      success: true
+    };
+  } catch (error) {
+    console.error('Error moderating product:', error);
+    throw error;
+  }
 };

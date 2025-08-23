@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, login, signup, logout } from '../api/auth';
+import { getCurrentUser, login, signup, verifyOtp, logout } from '../api/auth';
 import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
@@ -14,26 +14,15 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      if (token && storedUser) {
+      if (token) {
         try {
           const userData = await getCurrentUser();
-          if (userData) {
-            setUser(userData);
-          } else {
-            // If getCurrentUser returns null, clear storage
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-          }
+          setUser(userData);
         } catch (err) {
           console.error('Failed to fetch user data:', err);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
-      } else {
-        // If either token or user is missing, clear both
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
       }
       setLoading(false);
     };
@@ -44,15 +33,16 @@ export const AuthProvider = ({ children }) => {
   const handleLogin = async (credentials) => {
     try {
       setLoading(true);
-      const { token, user } = await login(credentials);
+      const { token, user: userData } = await login(credentials);
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
       setError(null);
-      return user;
+      return userData;
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-      toast.error(err.response?.data?.message || 'Login failed');
+      const errorMessage = err.response?.data?.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -62,15 +52,34 @@ export const AuthProvider = ({ children }) => {
   const handleSignup = async (userData) => {
     try {
       setLoading(true);
-      const { token, user } = await signup(userData);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
+      const response = await signup(userData);
       setError(null);
-      return user;
+      toast.success('Account created! Please check your email for OTP verification.');
+      return response;
     } catch (err) {
-      setError(err.response?.data?.message || 'Signup failed');
-      toast.error(err.response?.data?.message || 'Signup failed');
+      const errorMessage = err.response?.data?.message || 'Signup failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (otpData) => {
+    try {
+      setLoading(true);
+      const { token, user: userData } = await verifyOtp(otpData);
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      setError(null);
+      toast.success('Account verified successfully!');
+      return userData;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'OTP verification failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     } finally {
       setLoading(false);
@@ -83,13 +92,27 @@ export const AuthProvider = ({ children }) => {
     toast.success('Logged out successfully');
   };
 
+  const updateUser = async (userData) => {
+    try {
+      // This would typically make an API call to update user data
+      setUser(prev => ({ ...prev, ...userData }));
+      localStorage.setItem('user', JSON.stringify({ ...user, ...userData }));
+      toast.success('Profile updated successfully');
+    } catch (err) {
+      toast.error('Failed to update profile');
+      throw err;
+    }
+  };
+
   const value = {
     user,
     loading,
     error,
     login: handleLogin,
     signup: handleSignup,
+    verifyOtp: handleVerifyOtp,
     logout: handleLogout,
+    updateUser,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
   };
