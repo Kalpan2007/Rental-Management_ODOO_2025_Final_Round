@@ -7,7 +7,8 @@ import {
   CreditCardIcon,
   QuestionMarkCircleIcon,
   HomeIcon,
-  RefreshIcon
+  // RefreshIcon
+  
 } from '@heroicons/react/24/outline';
 
 const PaymentCancel = () => {
@@ -140,7 +141,7 @@ const PaymentCancel = () => {
                     : 'border-[#8b5e34] text-[#8b5e34] hover:bg-[#8b5e34] hover:text-[#ffedd8]'
                 }`}
               >
-                <RefreshIcon className="h-6 w-6 mr-3" />
+                {/* <RefreshIcon className="h-6 w-6 mr-3" /> */}
                 Try Again
               </button>
             </div>
